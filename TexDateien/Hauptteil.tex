@@ -59,16 +59,69 @@ Cho and Garcia-Molina haben in diesem Umfeld 3 Typen von verteilten Crawlern erf
 
 Im Rahmen dieses Projektes wurde sich für einen verteilten Crawler mit dynamischer Zuweisung (dynamic assignment) entschieden. Komplett unabhängige Arbeiter kommen nicht in Frage, da die Überlappung zu hoch ist. Eine statische Zuweisung ist schwer umzusetzen, da die einzelne Arbeiter dafür untereinander kommunizieren müssten. \\
 Bei der dynamischen Zuweisung kann der Koordinator zwar zum Flaschenhals werden, allerdings ist dies unwahrscheinlich, da die Analyse einer Seite oft mehrere Sekunden dauert. Dadurch brauchen die Arbeiter vergleichsweise lange, um ein Arbeitspaket zu bearbeiten und der Koordinator wird nicht überlastet. \\
-Die Aufteilung in einen Koordinator-Server und vielen Arbeitern ist außerdem Hilfreich um die Anforderung XXX aus Kapitel XX umzusetzen. Dabei ging es darum die Analyseergebnisse von jeder Seite an einer zentralen Stelle zu speichern. Die einzelnen Arbeiter können dafür einfach die Daten an den Koordinator schicken, welcher sie dann in einer Datenbank ablegt.
+Die Aufteilung in einen Koordinator-Server und vielen Arbeiter ist außerdem Hilfreich, um die Anforderung XXX aus Kapitel XXX umzusetzen. Dabei ging es darum die Analyseergebnisse von jeder Seite an einer zentralen Stelle zu speichern. Die einzelnen Arbeiter können dafür einfach die Daten an den Koordinator schicken, welcher sie dann in einer Datenbank ablegt.
 
-
-
-
-
-
+\section{Architektur Überblick}
+Abbildung XXX zeigt ein Diagramm mit allen Komponenten des Crawlers und wie diese miteinander interagieren. Wie in Abschnitt XXX erarbeitet wurde, gibt es einen zentralen Koordinator, welcher den Crawlprozess steuert. Im Diagramm heißt dieser Koordinator Master-Server. Er speichert alle bereits besuchten URLs, verwaltet die Warteschlange mit neuen URLs, verteilt Arbeitspakete an die Arbeiter und speichert die Analyseergebnisse jeder besuchten Seite. Realisiert wird der Master-Server durch eine NodeJS Anwendung.
+Im Diagramm ist außerdem das Worker-Plugin zu sehen. Dies ist der Arbeiter, welcher die Arbeitspakete entgegen nimmt und die einzelnen Seiten besucht. Er ist als Plugin innerhalb des Taintfox implementiert. Für die Kommunikation zwischen Arbeiter und Master kamen zwei Protokolle in Frage: HTTP und Websocket. Bei HTTP handelt es sich um ein Request/Response Protokoll. Der Klient stellt also eine Anfrage an den Server und bekommt von diesem eine Antwort. Jeder Arbeiter müsste also ein Polling durchführen, um neue Arbeitspakete zu erhalten. Das bedeutet sobald ein Arbeiter sein Arbeitspaket bearbeitet hat, muss er in gewissen Zeitabständen den Master nach einem neuen Fragen. \\
+Polling ist generell keine besonders schöne Lösung. Abhilfe schafft das Websocket Protokoll. Hier ist es dem Server Möglich direkt Nachrichten an einen Klienten zu senden, ohne das dieser eine explizite Anfrage gestellt hat. Diese Art des Datenaustausches nennt man "pushing". Für dieses Projekt wurde sich für Websockets entschieden, damit eine bidirektionale Verbindung zwischen Master und Arbeiter möglich ist.\\
+Zusätzlich zum Worker-Plugin muss im Taintfox ein Analyseplugin installiert werden. Dieses Plugin untersucht jede Seite, die vom Worker-Plugin geöffnet wird. Sobald die Analyse abgeschlossen ist, muss dem Worker-Plugin mitgeteilt werden, dass diese Seite nun geschlossen werden kann, sodass die nächste Seite aufgerufen wird. Dabei können Analyseergebnisse zu dieser Seite mitgegeben werden. Diese werden dann vom Worker-Plugin weitergeleitet zum Master.\\
+Im Diagramm ist außerdem angedeutet, dass es mehrere Taintfox Instanzen geben kann, die jeweils ein Analyseplugin und Arbeiterplugin installiert haben. Wird eine neue Instanz gestartet, so meldet sich diese bei dem Master-Server an und wartet auf das erste Arbeitspaket.
 
 \chapter{Implementierung}
+
+\section{Master Server}
+\subsection{Klassendiagramm}
+Die Klasse Crawler stellt die zentrale Klasse des Crawlers da. Sie bietet die Methode start, mit der ein neuer Crawlprozess gestartet werden kann. Dabei muss ein Array mit entsprechenden Startwebseiten angegeben werden. \\
+Für jeden Arbeiter, der sich bei dem Master-Server registriert hat existiert eine Instanz der Klasse Worker. Diese kümmert sich um die Verwaltung der Websocketverbindung und speichert wie viele Arbeitspakte momentan bearbeitet werden. Dadurch kann abgefragt werden, ob dieser Arbeiter noch ein weiteres Arbeitspaket verarbeiten kann. \\
+Alle Worker werden von der Klasse WorkerPool verwaltet, welche Auskunft darüber gibt, ob es momentan einen Worker gibt, der noch Arbeit benötigt und es durch die Methode processWorkPackage erlaubt ein Arbeitspaket zu verarbeiten. Dabei wird vom WorkerPool entschieden welcher Arbeiter am besten dafür geeignet ist. An dieser Stelle kann also ein Loadbalancing eingebaut werden, um die Arbeiter gleichmäßig auszulasten.
+
+Die Klasse PageRepository hat die Aufgabe alle gefundenen Webseiten zu verwalten. Mit Hilfe der addPages Methode können neu gefundene Webseiten hinzugefügt werden. Diese sind dann zunächst als unbesucht markiert. Wird versucht eine Webseite hinzuzufügen, die bereits enthalten ist, wird diese ignoriert.\\
+Die Methode makeWorkPackage erlaubt es dann ein Arbeitspaket einer beliebigen Größe zu erstellen. Dabei werden entsprechend viele Seiten, die noch als unbesucht markiert sind, zurückgeliefert.
+In dieser Funktion kann also definiert werden, welche Webseiten als nächstes bearbeitet werden sollen. Es gibt verschiedene Strategien, wie dies bestimmt werden kann. Diese Strategien werden in Abschnitt XXX genauer beschrieben.\\
+Durch das Aufrufen der Methode setPagesVisited kann eine Liste von Webseiten als besucht markiert werden. \\
+Mit welcher unterliegenden Technik die Klasse PageRepository implementiert wurde ist dabei von außen nicht zu erkennen. Für diese Projekt wurde sich für eine Implementierung mit einer MySQL Datenbank entschieden, da die gefundenen Seiten so persistent gespeichert werden und der Crawlprozess somit auch nach einem Neustart des Master-Servers fortgesetzt werden kann. Es ist aber durchaus vorstellbar zu einem späteren Zeitpunkt noch andere Implementierungen bereit zu stellen. So zum Beispiel eine In-Memory-Datenbank, wodurch die Abfragen an das PageRepository beschleunigt werden können.
+
+Die Klasse AnalysisResultRepository speichert die Analyseergebnisse jeder besuchten Webseite. Das Interface der Klasse ist sehr simple und bietet nur die Methode addAnalysisResult mit der ein neues Analyseergebnis gespeichert werden kann. Wie auch bei dem PageRepository wird zum speichern auf eine MySQL Datenbank zurückgegriffen. Es könnte stattdessen aber zum Beispiel auch eine MongoDB verwendet werden.
+
+
+\subsection{Datenmodell}
+Der Crawler verwendet eine Relationale Datenbank, um seine Daten zu persistieren. Dabei werden 2 Tabellen verwendet. In der Tabelle "pages" werden alle gefundenen Seiten gespeichert. Dazu gehören sowohl besuchte als auch unbesuchte Seiten.
+id \\
+Eindeutige Identifikationsnummer \\
+url \\
+Komplette URL der Seite samt Query Parameter \\
+foundAt \\
+Zeitpunkt zu dem die Seite gefunden wurde \\
+domain \\
+Die domain der Seite. Auf der Webseite https://www.dhbw-karlsruhe.de/allgemein/ ist dies zum Beispiel dhbw-karlsruhe \\
+topLevelDomain \\
+Die Top-Level-Domain der Webseite. Zum Beispiel de, com, co.uk, net usw... \\
+crawlDepth \\
+Gibt an wie viele Links von der Startseite aus verfolgt wurden, um auf diese Seite zu gelangen \\
+visitStatus \\
+Kann drei verschiedene Werte annehmen. Ist der Wert "visited", so wurde diese Seite bereits besucht und muss nicht nochmal gecrawlt werden. Der Status "unvisited" gibt an, dass die Seite noch nicht besucht wurde und in ein Arbeitspakt gepackt werden kann. Der letzte Zustand ist "pending". Eine Seite, die zur Verarbeitung an einen Arbeiter geschickt wurde, erhält diesen Zustand bis eine Antwort erhalten wurde. Wird der Crawlprozess unterbrochen und später fortgesetzt, so wird beim Neustart des Master-Servers alle Seiten mit dem Zustand "pending" zurück auf "unvisited" gesetzt.\\
+
+In der Tabelle "`analysis\_result"' werden die Analyseergebnisse der besuchten Seiten gespeichert. Da diese Ergebnisse von einem beliebigen Analyseplugin kommen, werden die eigentlichen Daten als JSON gespeichert. Dadurch ist nicht fest vorgegeben, welche Daten gespeichert werden können. Ein Eintrag in diese Tabelle wird nur gemacht, wenn auf einer Webseite tatsächlich Analyseergebnisse anfallen.
+id \\
+Eindeutige Identifikationsnummer \\
+payload \\
+Ein JSON Objekt in welchem die spezifischen Analyseergebnisse gespeichert sind \\
+page \\
+Ein Fremdschlüssel für die Tabelle "pages". Referenziert die Webseite, auf dem die Analyse durchgeführt wurde \\
+
+\subsection{Crawl Strategien}
 \section{Worker Plugin}
-\section{Master Plugin}
+Jeder Arbeiter des Crawlers ist ein Taintfox Instanz mit einem entsprechendem Worker-Plugin. Das Plugin verbindet sich per Websocket zum Master-Server und erhält von diesem Arbeitspakete mit Webseiten. Diese werden dann nacheinander im Browser geöffnet und alle vorhandenen Links werden extrahiert. Außerdem kann ein externes Analyseplugin Daten an das Worker-Plugin weiter geben. Sind alle Webseiten eines Arbeitspaketes abgearbeitet worden, so werden die neu gefundenen Links und gegebenenfalls vorhandene Analyseergebnisse an den Master-Server zurück gesendet.
+
+Da der Taintfox nur eine modifizierte Version des Firefox ist, kann das Add-On SDK des Firefox verwendet werden, um das Plugin zu erstellen. Alternativ kann auch die WebExtension API verwendet werden, um Plugins zu erstellen. Diese sind zum größten Teil Browserunabhänig und laufen somit auch in Browsern wie Chrome, Opera und Microsoft Edge. Da das zu entwickelnde Plugin allerdings nur im Tainfox Sinn ergibt, bringt diese Unabhängigkeit in diesem Fall keine Vorteile. Darum wird in diesem Projekt das Add-On SDK verwendet, welches tiefere Integration mit dem Taintfox bietet. In der Zukunft muss allerdings der Umstieg auf WebExtensions in Betracht gezogen werden, da Mozilla, der Entwickler hinter dem Firefox, angekündigt hat das Add-On SDK in zukünftigen Versionen nicht mehr vollständig zu unterstützen.
+
+\subsection{Aufbau von Firefox Plugins}
+Der Code eines Firefox Plugin ist in zwei getrennte Bereiche geteilt. Der Grundcode des Plugins hat Zugriff auf alle Firefox APIs und kann diese nutzen, um zum Beispiel neue Tabs zu öffnen, Benachrichtigungen anzuzeigen oder das Kontextmenü zu erweitern. Dieser Code kann zwar eine neue Seite aufrufen, allerdings kann nicht direkt auf den Inhalt dieser Seite zugegriffen werden. Um genauer zu sein gibt es keinen Zugriff auf das DOM der geladenen Seite. \\
+An dieser Stelle kommen sogenannte "Content Scripts" zum Einsatz. Diese haben Zugriff auf den Webinhalt und verhalten sich wie ein Javascript, welches auf der entsprechenden Seite eingebettet ist. Der Grundcode kann diese Content Scripts in beliebe Webseiten injizieren, um so gewisse Aufgaben auf dieser Seite zu erledigen. Die Kommunikation zwischen dem Grundcode und dem Content Script findet dabei über ein port Objekt statt, welches das asynchrone Versenden von Nachrichten zwischen den beiden erlaubt. Abbildung XXX illustriert wie die Methoden emit und on des port Objekts verwendet werden, um zu kommunizieren. [https://mdn.mozillademos.org/files/7873/content-scripting-overview.png]
+Für das Worker-Plugin werden 2 Content Scripts benötigt. ...
+
+\subsection{Sequenzdiagramm}
+\subsection{Firefox Plugin Aufbau}
 \chapter{Anwendung}
 \chapter{Fazit}
