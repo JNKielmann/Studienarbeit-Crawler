@@ -5,41 +5,47 @@ Die Websecurity Abteilung von SAP versucht solche Schwachstellen automatisiert a
 \section{Aufgabenstellung}
 Oft ist es Sinnvoll nicht nur eine einzige Seite auf Schwachstellen zu testen, sondern automatisiert eine Vielzahl von Seiten zu besuchen. Um dies zu ermöglichen soll im Rahmen dieser Arbeit ein Crawler entwickelt werden, der eine Liste von Startseiten besucht und aus diesen Verweise auf neue Seiten extrahiert. 
 Dafür muss eine Architektur gefunden werden, die sich in das aktuelle System einfügen lässt und sich gut skalieren lässt.
+\section{Vorgehensweise}
 
 \chapter{Grundlagen}
 \section{Crawler}
 Ein Web Crawler (oft auch Spider gennant) ist ein Computerprogramm, welches es ermöglicht, eine große Anzahl von Webseiten automatisiert zu besuchen.
-\section{Einsatzgebiete}
-Einer der bekanntesten Einsatzgebiete von Crawlern ist in Suchmaschinen. Diese bauen eine große Datenbank mit indizierten Webseiten auf und erlauben es einem Benutzer diese Datenbanken mit einer Suchanfrage zu durchsuchen. Um diese Datenbank zu füllen und aktuell zu halten wird ein Crawler verwendet, wie zum Beispiel der Googlebot der Suchmaschine Google. [https://support.google.com/webmasters/answer/182072?hl=de]
-\section{Funktionsweise}
+\subsection{Einsatzgebiete}
+Einer der bekanntesten Einsatzgebiete von Crawlern ist in Suchmaschinen. Diese bauen eine große Datenbank mit indizierten Webseiten auf und erlauben es einem Benutzer diese Datenbanken mit einer Suchanfrage zu durchsuchen. Um diese Datenbank zu füllen und aktuell zu halten wird ein Crawler verwendet, wie zum Beispiel der Googlebot der Suchmaschine Google.  [https://support.google.com/webmasters/answer/182072?hl=de] \\
+Preisvergleichsportale sammeln die Preise des selben Produkts in verschiedenen Onlineshops. Somit ist es einem Kunden möglich, einfach Preise zu vergleichen, ohne die einzelnen Onlineshops zu besuchen. Das Aggregieren der Preisdaten wird oft mit Hilfe eines Webcrawlers umgesetzt. Dieser besucht alle Webseiten der Onlineshops und extrahiert für jede die gefundenen Preise. 
+%[http://www.seas.upenn.edu/~cse400/CSE400_2004_2005/02writeup.pdf]%\\
+Ein Crawler kann auch im Zuge eines Penetrationstest verwendet werden. Dabei wird eine Webseite bzw. Webanwendung gezielt auf Schwachstellen untersucht. Der Webcrawler hilft dabei alle Seiten der Webanwendung zu besuchen und auf Schwachstellen zu testen. Anwendungen die dies Umsetzen sind zum Beispiel \enquote{Kali Grabber} [http://tools.kali.org/web-applications/grabber], \enquote{Vega}[https://subgraph.com/vega/index.en.html] und \enquote{WebSurgery}[http://www.surgeonix.com/blog/index.php/archives/category/tools] \\
+Webcrawler werden allerdings auch für kriminelle Zwecke eingesetzt. So ist es zum Beispiel möglich E-Mail-Adressen aus Webseiten zu extrahieren. Nachdem genug Seiten gecrawlt wurden, entsteht eine große Datenbank mit E-Mail-Adressen, die zum Versenden von Spam verwendet werden kann. \\
+\subsection{Funktionsweise}
 Die Funktionsweise eines Webcrawlers lässt sich im wesentlichen auf einen einfachen Algorithmus reduzieren. Im ersten Schritt wird eine Seite identifiziert, welche heruntergeladen werden soll. Alle Seiten, die noch besucht werden sollen, sind in einer Warteschlange gespeichert. Zu Beginn des Programms wird diese Schlange mit einer Reihe von Startseiten initialisiert, welche als Ausgangspunkt des Crawlprozesses dienen.\\
 Nachdem der Schlange eine zu besuchende Seite entnommen wurde muss geprüft werden, ob das Crawlen dieser Seite überhaupt erlaubt ist. Mit der Hilfe einer robots.txt Datei oder dem HTTP Header kann festgestellt werden, ob der Webseitenbetreiber das Crawlen nicht erwünscht.
-Falls die Seite besucht werden darf, wird sie komplett heruntergeladen und zu einer Liste mit besuchten Seiten hinzugefügt. Aus dem so erhaltenen HTML-Code werden nun alle Links auf der Seite extrahiert. Diese neuen Links werden der Warteschlange aus dem ersten Schritt hinzugefügt, sofern sie nicht in der Liste mit besuchten Seiten enthalten sind. Somit wird verhindert, dass eine Seite mehrmals besucht wird. \\
-Zum Schluss wird die heruntergeladene Seite analysiert und daraus gewonnene Informationen abgespeichert. Eine Suchmaschine könnte zum Beispiel alle Wörter die auf der Seite zu finden sind speichern. Danach beginnt der Prozess von die nächste zu besuchende Seite wird bestimmt. [http://www.ijcttjournal.org/Volume13/number-3/IJCTT-V13P128.pdf]
-\section{Herausforderungen}
+Falls die Seite besucht werden darf, wird sie komplett heruntergeladen und zu einer Liste mit besuchten Seiten hinzugefügt. Aus dem so erhaltenen HTML-Code werden nun alle Links auf der Seite extrahiert. Diese neuen Links werden der Warteschlange aus dem ersten Schritt hinzugefügt, sofern sie nicht in der Liste mit bereits besuchten Seiten enthalten sind. Somit wird verhindert, dass eine Seite mehrmals besucht wird. \\
+Zum Schluss wird die heruntergeladene Seite analysiert und daraus gewonnene Informationen abgespeichert. Eine Suchmaschine könnte zum Beispiel alle Wörter die auf der Seite zu finden sind speichern. Danach beginnt der Prozess von vorne und die nächste zu besuchende Seite wird bestimmt. [http://www.ijcttjournal.org/Volume13/number-3/IJCTT-V13P128.pdf]
+Bei speziellen Webcrawlern, wie zum Beispiel solche, die für Suchmaschinen eingesetzt werden, ist es außerdem nötig Seiten nach einer gewissen Zeit erneut zu besuchen, da sich der Inhalt möglicherweise geändert hat. Die Einträge in der Liste mit besuchten Seiten müssen also eine Lebensdauer zugewiesen bekommen. Läuft diese ab, so werden sie wieder in die Warteschlange des Webcrawlers eingefügt.
+\subsection{Herausforderungen}
 Dieser Algorithmus erscheint zunächst recht simpel, allerdings ist das World Wide Web sehr groß, wodurch sich einige Probleme ergeben. %[http://infolab.stanford.edu/~olston/publications/crawling_survey.pdf -> 1.1 Challenges] 
 Um eine akzeptable Performance zu erreichen, muss der Crawlvorgang hoch parallel ablaufen. In modernen Anwendungen ist es sogar üblich diesen Vorgang auf viele verschiedene Computer zu verteilen. In einem solchen Fall spricht man dann von "Distributed web crawling". \\
-Durch die enormen Datenmengen wird es auch schwierig die Datenstrukturen des Crawlers im Arbeitsspeicher zu halten. Zum Beispiel die Liste mit bereits besuchten Seiten kann sehr schnell groß werden. Diese Daten auf ein sekundäres Speichermedium zu verlagern und dabei annehmbare Performance zu behalten ist keine leichte Aufgabe.
+Durch die enormen Datenmengen wird es auch schwierig die Datenstrukturen des Crawlers im Arbeitsspeicher zu halten. Zum Beispiel die Liste mit bereits besuchten Seiten kann sehr schnell groß werden. Diese Daten auf ein sekundäres Speichermedium zu verlagern und dabei annehmbare Performance zu behalten ist keine leichte Aufgabe. \\
+Es gibt so viele Webseiten im Internet, dass selbst große Firmen wie Google mit ihren Webcrawlern diese nicht alle abdecken können. Deshalb ist es nötig gezielt Seiten zu besuchen, welche einen hohen Wert haben. Wie genau sich dieser Wert einer Seite berechnet kommt auf den speziellen Anwendungsfall des Webcrawlers an. Für Suchmaschinen sind zum Beispiel Seiten interessant, die von vielen anderen Stellen verlinkt wurden und hohe Aufrufzahlen haben. Seiten mit unwichtigem oder sogar schädlichem Inhalt müssen hingegen vermieden werden. \\
+Ein hochperformanter Crawler kann schnell versehentlich einen Webserver lahm legen. Indem in kurzer Zeit zu viele Anfragen an diesen geschickt werden, kann er unter der Last zusammenbrechen. Dies kommt einem Denial of Service (DOS) Angriff gleich. Um das zu verhindern muss der Algorithmus so angepasst werden, dass nicht zu viele Anfragen an einen einzigen Webserver gestellt werden.
 
 
 
 \section{Cross Site Scripting}
-\chapter{Architektur}
-\section{Bestehende Umgebung}
-In diesem Abschnitt wird nun zuerst die bestehende Umgebung beschrieben. Die Abbildung XXX zeigt einen Diagramm mit den einzelnen Komponenten. Wie zu sehen ist existiert bereits ein Plugin für den Taintfox mit dem Namen "Taintnotifier". Dieses Plugin reagiert auf das taintreport Event des Taintfox. Um zu überprüfen, ob es sich bei dem gefundenen Taintflow um eine echte Schwachstelle handelt, die ausgenutzt werden kann, gibt es einen extra validation service. Das Plugin sendet diesem die potenzielle Schwachstelle per HTTP. Der Service verwendet PhantomJS, um verschiedene Angriffe auszuprobieren, ohne einen kompletten Browser nutzen zu müssen. Sobald die Validierung abgeschlossen ist werden die Ergebnisse an das Plugin zurückgeliefert. Alle Taintflows, die auf einer Seite gefunden wurden, und die entsprechenden Validierungsergebnisse werden dann in den Entwicklertools angezeigt. \\
-Das Taintnotifier Plugin bietet außerdem die Möglichkeit einen export Server anzugeben. An diesen werden per Http alle Funde auf den besuchten Seiten gesendet. Dort werden sie in einer MongoDB gespeichert und können später über eine Weboberfläche abgerufen werden. \\
-Dieser Aufbau erlaubt es einem Benutzer das Taintnotifier Plugin zu installieren und spezielle Seiten gezielt aufzurufen, um diese auf Schwachstellen zu testen. Wie in der Aufgabestellung bereits angesprochen, soll dieser Prozess nun automatisiert werden, damit viele Seiten in kurzer Zeit überprüft werden können.
-\section{Crawler Anforderungen}
+\chapter{Entwurf}
+\section{Anforderungsanalyse}
 Die folgenden Anforderungen muss der Crawler erfüllen:
-\begin{itemize}
-	\item Der Crawler soll horizontal skalierbar sein. Das heißt, es soll möglich sein mehrere Taintfox Instanzen zu starten, die alle an dem Crawlprozess teilnehmen. Dies soll auch möglich sein, wenn diese Instanzen auf unterschiedlichen Rechner laufen.
-	\item Der Crawlvorgang soll gestartet werden können, indem eine Liste von URLs angegeben wird, die als Startseiten verwendet werden.
-	\item Nachdem der Crawler gestartet wurde soll dieser automatisch alle Startseiten besuchen und aus diesen weitere URLs extrahieren, die danach besucht werden.
-	\item Auf jeder Seite, die vom Crawler besucht wird, soll ein Analyseplugin ausgeführt werden können. Erst wenn dieses mit der Bearbeitung der Seite fertig ist, darf sie geschlossen werden.
-	\item Das Analyseplugin kann dem Crawler zu jeder besuchten Seite ein Datenpaket mit Analyseergebnissen übergeben. Diese Daten sollen dann zentral in einer Datenbank abgelegt werden.
-	\item Es soll die Option auf allen Seiten keine externen Links zu verfolgen. Das heißt der Crawlvorgang wird auf die Domains der Startseiten beschränkt.
-	\item Es soll eine maximale Suchtiefe angegeben werden können. Sind alle Seiten besucht, ist der Crawlvorgang beendet.	
-\end{itemize}
+\begin{description}
+	\item[ A1 ] Der Crawlvorgang soll gestartet werden können, indem eine Liste von URLs angegeben wird, die als Startseiten verwendet werden. Die Liste von URLs soll als CSV-Datei abgelegt sein. Durch eine Kommandozeilenoption kann der Pfad zu dieser Datei beim Start mit übergeben werden.
+	\item[ A2 ] Nachdem der Crawler gestartet wurde soll dieser automatisch alle Startseiten besuchen und aus diesen weitere URLs extrahieren, die danach besucht werden.
+	\item[ A3 ] Das Besuchen einer Webseite soll im Taintfox erfolgen. Das heißt die sie wird in einem Tab normal geöffnet, wodurch unter anderem auch alle eingebetteten JavaScript Dateien ausgeführt werden. 
+	\item[ A4 ] Auf jeder Webseite, die vom Crawler besucht wird, soll ein Analyseplugin ausgeführt werden können, welches ebenfalls im Taintfox installiert ist. Erst wenn dieses mit der Bearbeitung der Seite fertig ist, darf sie geschlossen werden.
+	\item[ A5 ] Das Analyseplugin kann dem Crawler zu jeder besuchten Webseite ein Datenpaket mit Analyseergebnissen übergeben. Diese Daten sollen dann zur späteren Weiterverarbeitung zentral in einer Datenbank abgelegt werden.
+	\item[ A6 ] Es soll eine Option geben, die es erlaubt auf allen Seiten keine externen Links zu verfolgen. Auf einer fiktiven Webseite \enquote{www.webseite.co.uk} sollen also Beispielsweise folgende Links ignoriert werden: \\ \enquote{www.anders.co.uk/home}, \enquote{www.webseite.de/123}, \enquote{www.webseite.uk}. Diese Links hingegen, sollten normal weiterverfolgt werden: \\  \enquote{www.webseite.co.uk/home},  \enquote{www.subdomain.webseite.co.uk/123}.
+	\item[ A7 ] Es soll eine maximale Suchtiefe angegeben werden können. Sind alle Seiten besucht, ist der Crawlvorgang beendet. Die Startseiten besitzen die Tiefe 0. Die Seiten, welche von den Startseiten aus erreicht wurden haben dann entsprechend die Tiefe 1. Setzt man als maximale Tiefe 0, so werden nur alle Startseiten besucht und keine Links extrahiert. Es findet dann also kein wirkliches Crawling mehr statt, sondern ein automatisiertes Besuchen aller Seiten in einer vorgegebenen List.
+	\item[ A8 ] Der Crawler soll horizontal skalierbar sein. Das heißt, es soll möglich sein mehrere Taintfox Instanzen zu starten, die alle an dem Crawlprozess teilnehmen. Dies soll auch möglich sein, wenn diese Instanzen auf unterschiedlichen Rechner laufen.	Um den Crawlprozess zu beschleunigen kann also nicht nur die Hardware eines Computers verbessert werden(vertikale Skalierung), sondern auch mehr Rechner angeschlossen werden.
+	\item[ A9 ] Es soll möglich sein den Crawlprozess zu stoppen und an einem späteren Zeitpunkt fortzusetzen. Wird der Crawler gestoppt, so gibt es einige Webseiten, die schon an eine Taintfox Instanz geschickt wurden und dort gerade geladen werden, aber noch keine Ergebnisse zurück geliefert haben. Diese Seiten sollen beim Fortsetzen des Crawlvorgangs wieder als unbesucht eingestuft werden, sodass sie nochmals an eine Taintfox Instanz verteilt werden.
+\end{description}
 
 \section{Crawler Typen}
 In diesem Kapitel wird eine Architektur für den Crawler entworfen. Dabei wird darauf geachtet, die Anforderungen aus Kapitel XXX zu erfüllen und gleichzeitig in die Bestehende Umgebung zu passen.
@@ -60,6 +66,11 @@ Cho and Garcia-Molina haben in diesem Umfeld 3 Typen von verteilten Crawlern erf
 Im Rahmen dieses Projektes wurde sich für einen verteilten Crawler mit dynamischer Zuweisung (dynamic assignment) entschieden. Komplett unabhängige Arbeiter kommen nicht in Frage, da die Überlappung zu hoch ist. Eine statische Zuweisung ist schwer umzusetzen, da die einzelne Arbeiter dafür untereinander kommunizieren müssten. \\
 Bei der dynamischen Zuweisung kann der Koordinator zwar zum Flaschenhals werden, allerdings ist dies unwahrscheinlich, da die Analyse einer Seite oft mehrere Sekunden dauert. Dadurch brauchen die Arbeiter vergleichsweise lange, um ein Arbeitspaket zu bearbeiten und der Koordinator wird nicht überlastet. \\
 Die Aufteilung in einen Koordinator-Server und vielen Arbeiter ist außerdem Hilfreich, um die Anforderung XXX aus Kapitel XXX umzusetzen. Dabei ging es darum die Analyseergebnisse von jeder Seite an einer zentralen Stelle zu speichern. Die einzelnen Arbeiter können dafür einfach die Daten an den Koordinator schicken, welcher sie dann in einer Datenbank ablegt.
+
+\section{Bestehende Umgebung}
+In diesem Abschnitt wird nun zuerst die bestehende Umgebung beschrieben. Die Abbildung XXX zeigt ein Diagramm mit den einzelnen Komponenten. Wie zu sehen ist, existiert bereits ein Plugin für den Taintfox mit dem Namen "Taintnotifier". Dieses Plugin reagiert auf das taintreport Event des Taintfox. Um zu überprüfen, ob es sich bei dem gefundenen Taintflow um eine echte Schwachstelle handelt, die ausgenutzt werden kann, gibt es einen extra Validation-Service. Das Plugin sendet diesem die potenzielle Schwachstelle per HTTP. Der Service verwendet PhantomJS, um verschiedene Angriffe auszuprobieren, ohne einen kompletten Browser nutzen zu müssen. Sobald die Validierung abgeschlossen ist werden die Ergebnisse an das Plugin zurückgeliefert. Alle Taintflows, die auf einer Webseite gefunden wurden, werden zusammen mit den entsprechenden Validierungsergebnissen in den Entwicklertools angezeigt. \\
+Das Taintnotifier Plugin bietet außerdem die Möglichkeit einen export Server anzugeben. An diesen werden per Http alle Funde gesendet, wo sie dann in einer MongoDB gespeichert werden. Später können diese Informationen dann über eine Weboberfläche abgerufen werden. \\
+Dieser Aufbau erlaubt es einem Benutzer das Taintnotifier Plugin zu installieren und spezielle Seiten gezielt aufzurufen, um diese auf Schwachstellen zu testen. Wie in der Aufgabestellung bereits angesprochen, soll dieser Prozess nun automatisiert werden, damit viele Seiten in kurzer Zeit überprüft werden können.
 
 \section{Architektur Überblick}
 Abbildung XXX zeigt ein Diagramm mit allen Komponenten des Crawlers und wie diese miteinander interagieren. Wie in Abschnitt XXX erarbeitet wurde, gibt es einen zentralen Koordinator, welcher den Crawlprozess steuert. Im Diagramm heißt dieser Koordinator Master-Server. Er speichert alle bereits besuchten URLs, verwaltet die Warteschlange mit neuen URLs, verteilt Arbeitspakete an die Arbeiter und speichert die Analyseergebnisse jeder besuchten Seite. Realisiert wird der Master-Server durch eine NodeJS Anwendung.
@@ -120,8 +131,9 @@ Da der Taintfox nur eine modifizierte Version des Firefox ist, kann das Add-On S
 Der Code eines Firefox Plugin ist in zwei getrennte Bereiche geteilt. Der Grundcode des Plugins hat Zugriff auf alle Firefox APIs und kann diese nutzen, um zum Beispiel neue Tabs zu öffnen, Benachrichtigungen anzuzeigen oder das Kontextmenü zu erweitern. Dieser Code kann zwar eine neue Seite aufrufen, allerdings kann nicht direkt auf den Inhalt dieser Seite zugegriffen werden. Um genauer zu sein gibt es keinen Zugriff auf das DOM der geladenen Seite. \\
 An dieser Stelle kommen sogenannte "Content Scripts" zum Einsatz. Diese haben Zugriff auf den Webinhalt und verhalten sich wie ein Javascript, welches auf der entsprechenden Seite eingebettet ist. Der Grundcode kann diese Content Scripts in beliebe Webseiten injizieren, um so gewisse Aufgaben auf dieser Seite zu erledigen. Die Kommunikation zwischen dem Grundcode und dem Content Script findet dabei über ein port Objekt statt, welches das asynchrone Versenden von Nachrichten zwischen den beiden erlaubt. Abbildung XXX illustriert wie die Methoden emit und on des port Objekts verwendet werden, um zu kommunizieren. [https://mdn.mozillademos.org/files/7873/content-scripting-overview.png]
 Für das Worker-Plugin werden 2 Content Scripts benötigt. ...
-
-\subsection{Sequenzdiagramm}
-\subsection{Firefox Plugin Aufbau}
+\subsection{Klassendiagramm}
 \chapter{Anwendung}
+\section{Alexa Top 500}
+\section{Reddit}
+
 \chapter{Fazit}
