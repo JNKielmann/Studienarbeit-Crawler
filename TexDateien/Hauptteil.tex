@@ -42,6 +42,15 @@ Diese Starke Individualisierbarkeit hat allerdings auch Nachteile. So ist es zum
 Die WebExtension API ist der Nachfolger des Add-On SDKs. Auch mit ihr lassen sich Plugins erstellen, die typische Browserfunktionalitäten ansteuern. Da die WebExtension API zum größten Teil kompatibel mit der Extension API des Chrome ist, sind die damit erzeugten Plugins Browserunabhängig und laufen somit auch im Chrome, Opera und Microsoft Edge. \\
 Zum Zeitpunkt, zu dem diese Arbeit geschrieben wurde, ist die WebExtension API allerdings noch nicht ganz vollständig und tiefe Eingriffe in den Firefox sind nicht mehr möglich. Trotzdem empfiehlt Mozilla den Umstieg auf WebExtensions, da dies der zukünftig unterstützte Weg ist, Plugins für den Firefox zu erstellen.
 \subsection{Plugin Aufbau}
+Der Aufbau eines Firefox Plugins mit Hilfe des Firefox SDK und der WebExtension API sind grundlegend gleich. Der Code ist in zwei getrennte Bereiche geteilt. Der Grundcode des Plugins hat Zugriff auf alle Firefox APIs und kann diese nutzen, um zum Beispiel neue Tabs zu öffnen, Benachrichtigungen anzuzeigen oder das Kontextmenü zu erweitern. Dieser Code kann zwar eine neue Seite aufrufen, allerdings kann nicht direkt auf den Inhalt dieser Seite zugegriffen werden. Um genauer zu sein gibt es keinen Zugriff auf das DOM der geladenen Seite. \\
+An dieser Stelle kommen sogenannte "Content Scripts" zum Einsatz. Diese haben Zugriff auf den Webinhalt und verhalten sich wie ein Script, welches auf der entsprechenden Seite eingebettet ist. Der Grundcode kann diese Content Scripts in beliebe Webseiten injizieren, um so gewisse Aufgaben auf dieser Seite zu erledigen. Die Kommunikation zwischen dem Grundcode und dem Content Script findet dabei über ein port Objekt statt, welches das asynchrone Versenden von Nachrichten zwischen den beiden erlaubt. Abbildung XXX illustriert wie die Methoden emit und on des port Objekts verwendet werden, um zu kommunizieren.
+%[https://developer.mozilla.org/en-US/Add-ons/SDK/Guides/Content_Scripts]
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.8\textwidth]{Bilder/content-scripting-overview.png}
+	\caption{Kommunikation mit Hilfe von Ports}
+\end{figure}
 
 \chapter{Entwurf}
 \section{Anforderungsanalyse}
@@ -155,12 +164,20 @@ Ein Fremdschlüssel für die Tabelle "pages". Referenziert die Webseite, auf dem
 \subsection{Crawl Strategien}
 \section{Worker Plugin}
 Jeder Arbeiter des Crawlers ist ein Taintfox Instanz mit einem entsprechendem Worker-Plugin. Das Plugin verbindet sich per Websocket zum Master-Server und erhält von diesem Arbeitspakete mit Webseiten. Diese werden dann nacheinander im Browser geöffnet und alle vorhandenen Links werden extrahiert. Außerdem kann ein externes Analyseplugin Daten an das Worker-Plugin weiter geben. Sind alle Webseiten eines Arbeitspaketes abgearbeitet worden, so werden die neu gefundenen Links und gegebenenfalls vorhandene Analyseergebnisse an den Master-Server zurück gesendet.
-
-
 \subsection{Aufbau von Firefox Plugins}
-Der Code eines Firefox Plugin ist in zwei getrennte Bereiche geteilt. Der Grundcode des Plugins hat Zugriff auf alle Firefox APIs und kann diese nutzen, um zum Beispiel neue Tabs zu öffnen, Benachrichtigungen anzuzeigen oder das Kontextmenü zu erweitern. Dieser Code kann zwar eine neue Seite aufrufen, allerdings kann nicht direkt auf den Inhalt dieser Seite zugegriffen werden. Um genauer zu sein gibt es keinen Zugriff auf das DOM der geladenen Seite. \\
-An dieser Stelle kommen sogenannte "Content Scripts" zum Einsatz. Diese haben Zugriff auf den Webinhalt und verhalten sich wie ein Javascript, welches auf der entsprechenden Seite eingebettet ist. Der Grundcode kann diese Content Scripts in beliebe Webseiten injizieren, um so gewisse Aufgaben auf dieser Seite zu erledigen. Die Kommunikation zwischen dem Grundcode und dem Content Script findet dabei über ein port Objekt statt, welches das asynchrone Versenden von Nachrichten zwischen den beiden erlaubt. Abbildung XXX illustriert wie die Methoden emit und on des port Objekts verwendet werden, um zu kommunizieren. [https://mdn.mozillademos.org/files/7873/content-scripting-overview.png]
+ [https://mdn.mozillademos.org/files/7873/content-scripting-overview.png]
 Für das Worker-Plugin werden 2 Content Scripts benötigt. ...
+\subsection{Aufgetretene Probleme}
+In diesem Abschnitt werden kurz einige Probleme und deren Lösungen beleuchtet, die während der Entwicklung des Worker Plugins aufgetreten sind. Diese waren dabei nicht in den Anforderungen aus Kapitel XXX vorhergesehen.
+\subsubsection{Bilder und andere Ressourcen}
+Nachdem eine Seite im Taintfox geladen wurde, werden vom Worker Plugin alle Links extrahiert. Die meisten dieser Links führen zu anderen Webseiten, die ebenfalls besucht werden sollen. Es gibt allerdings auch Links auf Bilder und andere Ressourcen, welche nicht geöffnet werden brauchen, da hier keine Analysedaten gewonnen werden können. Um das unnötige laden von diesen Ressourcen zu vermeiden wird die Eigenschaft \enquote{contentType} des Tab-Objektes inspiziert. Diese beinhaltet den Internet Media Type (MIME-Type) der zu ladenden Ressource, welcher die Art der Ressource genauer beschreibt. Interessant für das Crawling sind MIME-Types wie \enquote{text/html} und \enquote{application/xhtml+xml} welche auf HTML Seiten hinweisen. Wird hingegen zum Beispiel der MIME-Type \enquote{image/png}, \enquote{audio/mpeg} oder \enquote{application/pdf} vorgefunden, so muss diese Ressource nicht weiter verfolgt werden, da sie für das Anaylseplugin unwichtig ist. 
+\subsubsection{Downloads}
+Einige Webseiten starten über ein Skript automatisch Downloads. Dies führt dazu, dass der Taintfox ein separates Fenster mit Informationen zu diesem Download anzeigt, wie in Abbildung XXX zu sehen ist. Für den Crawler sind diese Downloads nicht relevant und werden ignoriert. Mit der Zeit werden dadurch immer mehr solcher Downloadfenster geöffnet. \\
+Um dieses Problem zu umgehen kann der Firefox so eingestellt werden, dass alle Dateien automatisch heruntergeladen werden, ohne den Benutzer in einem Popup danach zu fragen. Da die Dateien nicht tatsächlich heruntergeladen werden sollen, meldet das Worker-Plugin einen Listener an, welcher benachrichtigt wird, sobald ein neuer Download gestartet wurde. Dieser wird dann im nächsten Schritt sofort abgebrochen.
+\subsubsection{Zu viele Anfragen auf eine Seite}
+Ein Webserver kann so konfiguriert werden, dass er bei zu viele Anfragen von der selben IP-Adresse den Fehler 429 \enquote{To many requests} zurück liefert. Um dieses Problem zu umgehen sollten die Arbeitspakete möglichst unterschiedliche URLs enthalten, die jeweils zu einer anderen Domäne gehören.
+\subsubsection{Taintfox Abstürze}
+Der Firefox und somit auch der Taintfox ist nicht dafür ausgelegt, eine große Menge von Webseiten hintereinander, für eine lange Zeitperiode, zu laden. Aus diesem Grund kann es hin und wieder zu einem Absturz kommen. Um ein manuelles Neustarten zu vermeiden sollte der Taintfox mit Hilfe eines Skriptes so gestartet werde, dass bei einem Absturz der Neustart automatisch erfolgt. Während den Testdurchläufen hat sich ergeben, dass ein automatisierter Neustart des Taintfox alle 3-4 Stunden am besten funktioniert.
 \subsection{Klassendiagramm}
 \chapter{Anwendung}
 \section{Alexa Top 500}
