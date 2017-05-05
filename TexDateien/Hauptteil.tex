@@ -31,7 +31,26 @@ Ein hochperformanter Crawler kann schnell versehentlich einen Webserver lahm leg
 
 
 
-\section{Cross Site Scripting}
+\section{Cross-Site Scripting}
+Das "Open Web Application Security Project" (OWASP) publiziert eine Liste mit den Top 10 Sicherheitsrisiken in Webanwendungen. Sowohl in der Liste aus dem Jahr 2013, als auch im Release Candidate für das Jahr 2017, steht Cross-Site-Scripting auf dem dritten Platz. Diese Art von Sicherheitslücke ist also schon lange bekannt, aber noch immer stark verbreitet und somit relevant. \\
+Beim Cross-Site Scripting, kurz XSS, versucht ein Angreifer eigenen HTML Code in eine fremde Webseite einzuschleusen. Häufig werden vom Benutzer kontrollierbare Eingaben, wie z.B. die URL, Query-Parameter, Cookies oder auch Eingabefelder, in der Webseite eingefügt. Bei der Programmierung müssen diese Eingaben auf HTML und JavaScript Code überprüft werden. Wird diese Überprüfung versäumt und die Eingabe umgeändert auf der Webseite wiedergegeben, so ist es möglich fremden Code auszuführen. \\
+Das Ziel des Angreifers ist es, die Webseite so zu manipulieren, dass im Browser eines Opfers der Code des Angreifers ausgeführt wird. So kann der Angreifer das Opfer beispielsweise unbemerkt auf eine Phishing Seite weiterleiten, die zwar genauso aussieht wie die Originalseite, jedoch die Login-Daten des Benutzers abfängt. Auch denkbar ist das Stehlen der Cookies des Opfers. Dadurch kann es dem Angreifer die gelingen eine Session des Opfers zu übernehmen, ohne sich anmelden zu müssen. Es gibt noch viele weitere Angriffe, die mit Hilfe einer XSS Lücke durchgeführt werden können. Aus diesem Grund ist diese Art der Sicherheitslücke sehr problematisch.
+\subsection{Cross-Site Scripting Typen}
+Cross-Site Scripting Lücken lassen sich in drei Typen untergliedern: stored XSS, reflected XSS und DOM Based XSS.
+\subsubsection{Stored XSS}
+Bei stored XSS Angriffen wird eine Benutzereingabe an den Server gesendet, welche dort in einer Datenbank persistiert wird. Zu einem späteren Zeitpunkt besucht das Opfer eine Webseite, die diese gespeicherten Daten wieder lädt und sie ungeprüft in die Webseite einfügt. \\
+Dies könnte zum Beispiel in einem Forum passieren. Der Angreifer macht einen Foreneintrag, der schädlichen JavaScript Code enthält und zum Server gesendet wird. Ruft ein anderer Benutzer diesen Forenbeitrag auf, so wird der Schadcode automatisch in die Seite eingefügt und ausgeführt. 
+\subsubsection{Reflected XSS}
+Wird eine Benutzereingabe unmittelbar, ohne Überprüfung, in die Webseite eingefügt, zum Beispiel als Fehlermeldung oder Suchergebnis, so spricht man von reflected XSS. Diese Benutzereingabe wird im Gegensatz zum stored XSS nirgendwo permanent gespeichert, allerdings wird sie möglicherweise trotzdem an den Server gesendet.
+\subsubsection{DOM Based XSS}
+Hier findet der gesamte Datenfluss von der Benutzereingabe bis zum DOM der Webseite im Browser statt. Der Schadcode des Angreifers bleibt also beim Klienten und erreicht nie den Server. Oft werden zum Beispiel Teile der URL direkt über JavaScript Funktionen wie document.write in die entsprechende Webseite eingefügt. Wird hierbei die Eingabe nicht richtig geprüft, so ist DOM Based XSS möglich.
+\subsection{Beispiele}
+
+\subsection{Taintfox}
+Als Anwendungsfall des Webcrawlers dient in dieser Arbeit das automatische Finden von DOM basierten Cross-Site-Scripting Schwachstellen. Dazu wird der Taintfox verwendet, welcher diese Schwachstellen erkennen kann. \\
+Der Taintfox ist eine modifizierte Version des Mozilla Firefox. Um Cross-Site-Scripting zu erkenne, werden alle Benutzereingaben markiert (tainting). Diese Eingaben kommen dabei aus unterschiedlichen Quellen, wie zum Beispiel der URL (document.location) oder den Cookies (document.cookies). Der Taintfox verfolgt den Verlauf dieser markierten Werte und merkt sich dabei, welche Funktionen auf diese angewendet werden. Landet der Wert zum Schluss in einer sicherheitskritischen Funktion wie document.write, so liegt ein potenziell kritische Datenfluss (Taintflow) vor. Die Funktion, in welcher der markierte Wert landet, nennt man auch Senke. Erkennt der Taintfox einen solchen Datenfluss, so wird das Taintfox spezifische Event taintReport ausgelöst. Auf dieses kann dann reagiert werden, um den Taintflow weiter zu analysieren.
+
+
 \section{Firefox Plugins}
 In diesem Abschnitt wird der generelle Aufbau von Firefox Plugins beschrieben. Für dieses Arbeit ist der Einsatz von solchen Plugins nötig, um Webseiten automatisiert im Taintfox zu öffnen. Da der Taintfox nur ein modifizierter Firefox ist, können für beide Browser die gleichen Plugins verwendet werden. In der Firefox Dokumentation ist statt Plugin auch oft die Rede von Add-On. Diese beiden Begriffe werden im weiteren Verlauf der Arbeit synonym verwendet. \\
 Für die Entwickelung von Firefox Plugins gibt es zwei Optionen: das Add-On SDK und die Webextension API. Beide Ansätze werden im Folgenden kurz angesprochen.
