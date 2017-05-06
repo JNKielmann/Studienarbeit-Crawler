@@ -198,8 +198,63 @@ Ein Webserver kann so konfiguriert werden, dass er bei zu viele Anfragen von der
 \subsubsection{Taintfox Abstürze}
 Der Firefox und somit auch der Taintfox ist nicht dafür ausgelegt, eine große Menge von Webseiten hintereinander, für eine lange Zeitperiode, zu laden. Aus diesem Grund kann es hin und wieder zu einem Absturz kommen. Um ein manuelles Neustarten zu vermeiden sollte der Taintfox mit Hilfe eines Skriptes so gestartet werde, dass bei einem Absturz der Neustart automatisch erfolgt. Während den Testdurchläufen hat sich ergeben, dass ein automatisierter Neustart des Taintfox alle 3-4 Stunden am besten funktioniert.
 \subsection{Klassendiagramm}
+
 \chapter{Anwendung}
+In diesem Kapitel wird der zuvor entwickelte Webcrawler eingesetzt, um eine große Anzahl von Seiten auf Dom basierte Cross-Site Scripting Schwachstellen zu untersuchen. Dies dient einerseits dazu, die Fähigkeiten und Grenzen des Webcrawlers zu testen, andererseits sollen die gewonnenen Daten analysiert werden, um festzustellen, wie häufig DOM basiertes XSS ist. Zusätzlich wird erfasst, welche Quellen und Senken dabei am häufigsten sind. Im Rahmen dieser Arbeit wurden zwei Crawlvorgänge mit verschieden Parameter durchgeführt.
 \section{Alexa Top 500}
-\section{Reddit}
+Das kalifornische Unternehmen Alexa Internet veröffentlicht regelmäßig eine Liste mit den meist besuchten Webseiten im Internet. Dabei werden Daten wie die Anzahl der täglichen Benutzer und die durchschnittliche Zeit, die jeder Benutzer auf der Webseite verbringt, verwendet. Damit bietet die Alexa Top Websites Liste einen guten Datensatz für die Suche von Sicherheitslücken, da es sich um tatsächlich relevante Webseiten handelt und die Ergebnisse durch die genauen Daten vergleichbar sind.\\
+\subsection{Webcrawler Konfiguration}
+Die ersten 500 Webseiten auf Alexa Liste werden für den folgenden Crawldurchlauf als Start-URLs verwendet. Der Webcrawler wird so konfiguriert, dass nur interne Links auf den Webseiten verfolgt werden, um somit auf der gleichen Domäne zu bleiben. Dadurch wird sichergestellt, dass das Ergebnis nicht verfälscht wird und ausschließlich die Alexa Top 500 Webseiten besucht werden. \\
+Es wird eine maximale Crawltiefe von zwei eingestellt. Da die Anzahl der zu besuchenden Webseiten exponentiell mit der Suchtiefe wächst, muss bei 500 Startseiten bereits hier mit einer Größenordnung im sechsstelligen Bereich gerechnet werden. Eine solche Anzahl von Webseiten ist für ein kleinen Hardwaresetup schon sehr viel.\\
+Der Webcrawler läuft auf einer virtuellen Maschine mit installiertem Windows 10 mit 5 Gigabyte Arbeitsspeicher. Angebunden ist diese an eine 50 Mbit Internetleitung. Es werden 2 Taintfox Instanzen, mit jeweils 3 Tabs, als Arbeiter gestartet.
+\subsection{Daten zum Crawlvorgang}
+Es wurden insgesamt 3.346.905 Webseiten vom Crawler entdeckt, von denen 77.025 besucht wurden. Tabelle XXX zeigt die Anzahl der gefundenen und besuchten Seiten pro Crawltiefe. Auf der Crawltiefe 0 wurden alle 500 Startseiten besucht. Auch auf Ebene 1 wurden die meisten gefundenen Webseiten auch besucht. Die ca. 500 unbesuchten Webseiten sind Links auf fehlerhafte oder nicht mehr existierende Seiten. In Ebene 2 sind vergleichsweise nur sehr wenige Webseiten besucht worden. Dies liegt daran, dass der Crawlvorgang, aufgrund von Zeitmangel, frühzeitig beendet werden musste. \\
+Für das Crawlen der 77.025 Webseiten wurden insgesamt ca. 3 Tage bzw. 72 Stunden benötigt. Bei dem gegebenen Setup, liegt die Performance des Webcrawlers also ungefähr bei 1000 Webseiten pro Stunde.
+
+\begin{table}
+\centering
+\begin{tabular}{|c|c|c|}
+	\hline 
+	Crawltiefe & besuchte Seiten & gefundene Seiten \\ 
+	\hline 
+	0 & 500 & 500 \\ 
+	\hline 
+	1 & 72.232 & 72.734 \\ 
+	\hline 
+	2 & 4293 & 3.273.671 \\ 
+	\hline 
+	\hline
+	gesamt  & 77.025 & 3.346.905 \\ 
+	\hline 
+\end{tabular} 
+\caption{Statistik der besuchten und gefunden Seiten}
+\end{table}
+
+\subsection{Daten zur Analyse}
+Während des Crawlvorgangs wurden für 69.997 von insgesamt 77.025 Webseiten ein Analyseergebnis erstellt. Das bedeutet auf 9,1\% der Webseiten wurde überhaupt kein Datenfluss (Taintflow) gefunden. Jedes Analyseergebnis beinhaltet mehrere Taintflows. Insgesamt wurden 283.911 entdeckt. Pro Webseite auf der es überhaupt einen Taintflow gibt wurden im Durchschnitt also 4 solcher Flows gefunden. \\
+Das Diagramm XXX zeigt die Verteilung der Quellen und Senken. Zuerst fällt ins Auge, dass document.cookie sowohl bei den Quellen, als auch bei den Senken den ersten Platz belegt. Gerade bei diesen Datenflüssen ist allerdings ein Angriff eher schwer. Die restlichen Quellen beziehen sich alle auf die URL oder einen Teil davon. Bei den Senken stehen document.write und innerHTML auf zweiter und dritter Stelle. Beide erlauben es dynamisch HTML zu einer Seite hinzuzufügen. Unter \enquote{Rest} sind alle anderen Senken enthalten, wie zum Beispiel eval. \\
+Der Exploit-Generator, welcher für die verschiedenen Flows automatisch Angriffe generiert, kann dies nur für einen kleinen Teil der Quellen und Senken machen. Aus diesem Grund werden alle Taintflows, welche eine Quelle oder Senke besitzen, für die kein Exploit generiert werden kann, herausgefiltert. Dabei entsteht eine Liste mit allen potentiell angreifbaren Taintflows, welche in diesem konkreten Fall 52.933 Elemente hat. Für 18.6\% aller gefundenen Taintflows kann also automatisch ein Exploit generiert werden. 
+
+Das Diagramm XXX zeigt ebenfalls die Verteilung von Quellen und Senken, allerdings diesmal nur von den potentiell angreifbaren Taintflows. Als Quellen kommen hier nur noch \enquote{location.href} und \enquote{document.documentURI} in Frage. Beide dieser Eigenschaften verweisen auf die komplette URL der Webseite. Eine schädlicher Code könnte also zum Beispiel an das Ende der URL angehängt werden. \\
+Die beiden Top Senken sind \enquote{document.write} und \enquote{innerHTML}. Die meisten Cross-Site Scripting Möglichkeiten entstehen also beim dynamischen einfügen von HTML. Das dynamische Ausführen von JavaScript über eval scheint hingegen sehr viel seltener einen kritischen Datenfluss zu erzeugen (nur 1\%). 
+
+Mithilfe des Validierungsservice, der auf PhantomJS basiert, wurden alle 52.933 potenziellen XSS Schwachstellen überprüft. Das Ergebnis sind 180 erfolgreiche Exploits. Darin sind allerdings auch teilweise die gleichen Verwundbarkeiten auf verschiedenen Webseiten enthalten. Tritt auf unterschiedlichen Webseiten mit der selben Domäne, im selben Skript, in der selben Zeile ein Exploit auf, so sollte dies nur als eine Verwundbarkeit gezählt werden. Nach einer entsprechenden Filterung liegen dann 31 ausführbare Cross-Site-Scripting Angriffe, auf 15 verschiedenen Domänen, vor. Es sind somit 3\% der Alexa Top 500 Seiten angreifbar. Dies zeigt, dass XSS immer noch ein großes Problem darstellt, zumal hier nur auf einfache DOM basierte Angriffe getestet wurde. Es ist davon auszugehen, dass bei komplexeren XSS Angriffen noch mehr Seiten betroffen sind.
+ 
+
+\begin{figure}
+	\centering
+	\includegraphics[width=1\textwidth]{Bilder/Diagram1.png}
+	\caption{Verteilung der Quellen und Senken von allen Taintflows}
+\end{figure}
+
+\section{Webforum}
+In Abschnitt XXX wurde ein sehr beschränkter Crawldurchlauf der Alexa Top 500 Webseiten durchgeführt. Dies ist sinnvoll, da so ein fester Datensatz verwendet wurde. In einem zweiten Crawldurchlauf sollen nun viele möglichst verschiedene Seiten besucht werden. Die Hoffnung ist, dadurch so viele Sicherheitslücken wie möglich zu finden.
+\subsection{Webcrawler Konfiguration}
+Als Startpunkt des Crawlprozesses wird das Webforum reddit.com gewählt, da auf diesem viele externe Links vorhanden sind. Werden auf einer Webseite keine Schwachstellen gefunden, so ist es unwahrscheinlicher auf anderen Webseiten der selben Domäne fündig zu werden. Mit diesem Gedanken im Hinterkopf, wird der Crawler so eingestellt, dass ausschließlich externe Links weiterverfolgt werden. \\
+Die maximale Crawltiefe wird auf 7 gestellt, da nur eine einzige Startseite angegeben wurde und es in der Regel nicht so viele externe Links auf einer Seite gibt.
+\subsection{Daten zum Crawlvorgang}
+Am Ende des Crawlvorgangs wurden insgesamt 1.253.853 Webseiten entdeckt und 75.621 besucht. Das sind etwa gleich viele besuchte Webseiten, wie im vorherigen Versuch. Auf eine Tabelle mit den besuchten Seiten pro Suchtiefe wird hier verzichtet. Die Geschwindigkeit, mit der die Webseiten besucht wurden, ist ebenfalls gleich geblieben. Der Crawlvorgang wurde nach ca. drei Tagen gestoppt.
+\subsection{Daten zur Analyse}
+
 
 \chapter{Fazit}
