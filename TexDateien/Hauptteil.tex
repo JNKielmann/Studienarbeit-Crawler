@@ -145,6 +145,14 @@ In der vorherigen Umgebung wurde jedes Analyseergebnis auch gleich vom Validieru
 Nachdem im vorhergehenden Kapitel die einzelnen Komponenten der Webcrawler Architektur erarbeitet wurde, wird in diesem Kapitel nun die Implementierung des Masterservers und Workerplugins genauer betrachtet. Diese beiden Komponenten stellen den Kern des Webcrawlers dar und sind unabhängig von dem speziellen Anwendungsfall für den der Crawler eingesetzt werden soll.
 \section{Master Server}
 \subsection{Klassendiagramm}
+
+\begin{figure}
+	\centering
+	\hspace*{-1cm}
+	\includegraphics[width=1\textwidth]{Bilder/CrawlerKlassendiagramm.png}
+	\caption{Klassendiagramm des Masterservers}
+\end{figure}
+
 Die Klasse Crawler stellt die zentrale Klasse des Crawlers da. Sie bietet die Methode start, mit der ein neuer Crawlprozess gestartet werden kann. Dabei muss ein Array mit entsprechenden Startwebseiten angegeben werden. \\
 Für jeden Arbeiter, der sich bei dem Master-Server registriert hat existiert eine Instanz der Klasse Worker. Diese kümmert sich um die Verwaltung der Websocketverbindung und speichert wie viele Arbeitspakte momentan bearbeitet werden. Dadurch kann abgefragt werden, ob dieser Arbeiter noch ein weiteres Arbeitspaket verarbeiten kann. \\
 Alle Worker werden von der Klasse WorkerPool verwaltet, welche Auskunft darüber gibt, ob es momentan einen Worker gibt, der noch Arbeit benötigt und es durch die Methode processWorkPackage erlaubt ein Arbeitspaket zu verarbeiten. Dabei wird vom WorkerPool entschieden welcher Arbeiter am besten dafür geeignet ist. An dieser Stelle kann also ein Loadbalancing eingebaut werden, um die Arbeiter gleichmäßig auszulasten.
@@ -231,21 +239,30 @@ Für das Crawlen der 77.025 Webseiten wurden insgesamt ca. 3 Tage bzw. 72 Stunde
 \end{table}
 
 \subsection{Daten zur Analyse}
-Während des Crawlvorgangs wurden für 69.997 von insgesamt 77.025 Webseiten ein Analyseergebnis erstellt. Das bedeutet auf 9,1\% der Webseiten wurde überhaupt kein Datenfluss (Taintflow) gefunden. Jedes Analyseergebnis beinhaltet mehrere Taintflows. Insgesamt wurden 283.911 entdeckt. Pro Webseite auf der es überhaupt einen Taintflow gibt wurden im Durchschnitt also 4 solcher Flows gefunden. \\
-Das Diagramm XXX zeigt die Verteilung der Quellen und Senken. Zuerst fällt ins Auge, dass document.cookie sowohl bei den Quellen, als auch bei den Senken den ersten Platz belegt. Gerade bei diesen Datenflüssen ist allerdings ein Angriff eher schwer. Die restlichen Quellen beziehen sich alle auf die URL oder einen Teil davon. Bei den Senken stehen document.write und innerHTML auf zweiter und dritter Stelle. Beide erlauben es dynamisch HTML zu einer Seite hinzuzufügen. Unter \enquote{Rest} sind alle anderen Senken enthalten, wie zum Beispiel eval. \\
-Der Exploit-Generator, welcher für die verschiedenen Flows automatisch Angriffe generiert, kann dies nur für einen kleinen Teil der Quellen und Senken machen. Aus diesem Grund werden alle Taintflows, welche eine Quelle oder Senke besitzen, für die kein Exploit generiert werden kann, herausgefiltert. Dabei entsteht eine Liste mit allen potentiell angreifbaren Taintflows, welche in diesem konkreten Fall 52.933 Elemente hat. Für 18.6\% aller gefundenen Taintflows kann also automatisch ein Exploit generiert werden. 
+Während des Crawlvorgangs wurden für 69.997 von insgesamt 77.025 Webseiten ein Analyseergebnis erstellt. Das bedeutet auf 9,1\% der Webseiten wurde überhaupt kein Datenfluss (Taintflow) gefunden. Jedes Analyseergebnis beinhaltet mehrere Taintflows. Insgesamt wurden 283.911 entdeckt. Pro Webseite auf der es überhaupt einen Taintflow gibt wurden im Durchschnitt also 4 solcher Flows gefunden. 
 
-Das Diagramm XXX zeigt ebenfalls die Verteilung von Quellen und Senken, allerdings diesmal nur von den potentiell angreifbaren Taintflows. Als Quellen kommen hier nur noch \enquote{location.href} und \enquote{document.documentURI} in Frage. Beide dieser Eigenschaften verweisen auf die komplette URL der Webseite. Eine schädlicher Code könnte also zum Beispiel an das Ende der URL angehängt werden. \\
-Die beiden Top Senken sind \enquote{document.write} und \enquote{innerHTML}. Die meisten Cross-Site Scripting Möglichkeiten entstehen also beim dynamischen einfügen von HTML. Das dynamische Ausführen von JavaScript über eval scheint hingegen sehr viel seltener einen kritischen Datenfluss zu erzeugen (nur 1\%). 
+Das Diagramm XXX zeigt die Verteilung der Quellen und Senken. Zuerst fällt ins Auge, dass document.cookie sowohl bei den Quellen, als auch bei den Senken den ersten Platz belegt. Gerade bei diesen Datenflüssen ist allerdings ein Angriff eher schwer. Die restlichen Quellen beziehen sich alle auf die URL oder einen Teil davon. Bei den Senken stehen document.write und innerHTML auf zweiter und dritter Stelle. Beide erlauben es dynamisch HTML zu einer Seite hinzuzufügen. Unter \enquote{Rest} sind alle anderen Senken enthalten, wie zum Beispiel eval. 
 
-Mithilfe des Validierungsservice, der auf PhantomJS basiert, wurden alle 52.933 potenziellen XSS Schwachstellen überprüft. Das Ergebnis sind 180 erfolgreiche Exploits. Darin sind allerdings auch teilweise die gleichen Verwundbarkeiten auf verschiedenen Webseiten enthalten. Tritt auf unterschiedlichen Webseiten mit der selben Domäne, im selben Skript, in der selben Zeile ein Exploit auf, so sollte dies nur als eine Verwundbarkeit gezählt werden. Nach einer entsprechenden Filterung liegen dann 31 ausführbare Cross-Site-Scripting Angriffe, auf 15 verschiedenen Domänen, vor. Es sind somit 3\% der Alexa Top 500 Seiten angreifbar. Dies zeigt, dass XSS immer noch ein großes Problem darstellt, zumal hier nur auf einfache DOM basierte Angriffe getestet wurde. Es ist davon auszugehen, dass bei komplexeren XSS Angriffen noch mehr Seiten betroffen sind.
- 
-
-\begin{figure}
+\begin{figure}[h]
 	\centering
 	\includegraphics[width=1\textwidth]{Bilder/Diagram1.png}
 	\caption{Verteilung der Quellen und Senken von allen Taintflows}
 \end{figure}
+
+Der Exploit-Generator, welcher für die verschiedenen Flows automatisch Angriffe generiert, kann dies nur für einen kleinen Teil der Quellen und Senken machen. Aus diesem Grund werden alle Taintflows, welche eine Quelle oder Senke besitzen, für die kein Exploit generiert werden kann, herausgefiltert. Dabei entsteht eine Liste mit allen potentiell angreifbaren Taintflows, welche in diesem konkreten Fall 52.933 Elemente hat. Für 19\% aller gefundenen Taintflows kann also automatisch ein Exploit generiert werden. \\
+Das Diagramm XXX zeigt ebenfalls die Verteilung von Quellen und Senken, allerdings diesmal nur von den potentiell angreifbaren Taintflows. Als Quellen kommen hier nur noch \enquote{location.href} und \enquote{document.documentURI} in Frage. Beide dieser Eigenschaften verweisen auf die komplette URL der Webseite. Eine schädlicher Code könnte also zum Beispiel an das Ende der URL angehängt werden. \\
+Die beiden Top Senken sind \enquote{document.write} und \enquote{innerHTML}. Die meisten Cross-Site Scripting Möglichkeiten entstehen also beim dynamischen einfügen von HTML. Das dynamische Ausführen von JavaScript über eval scheint hingegen sehr viel seltener einen kritischen Datenfluss zu erzeugen (nur 1\%). 
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=1\textwidth]{Bilder/Diagram2.png}
+	\caption{Verteilung der Quellen und Senken von potentiell angreifbaren Taintflows}
+\end{figure}
+
+Mithilfe des Validierungsservice, der auf PhantomJS basiert, wurden alle 52.933 potenziellen XSS Schwachstellen überprüft. Das Ergebnis sind 180 erfolgreiche Exploits. Darin sind allerdings auch teilweise die gleichen Verwundbarkeiten auf verschiedenen Webseiten enthalten. Tritt auf unterschiedlichen Webseiten mit der selben Domäne, im selben Skript, in der selben Zeile ein Exploit auf, so sollte dies nur als eine Verwundbarkeit gezählt werden. Nach einer entsprechenden Filterung liegen dann 31 ausführbare Cross-Site-Scripting Angriffe, auf 15 verschiedenen Domänen, vor. Es sind somit 3\% der Alexa Top 500 Seiten angreifbar. Dies zeigt, dass XSS immer noch ein großes Problem darstellt, zumal hier nur auf einfache DOM basierte Angriffe getestet wurde. Es ist davon auszugehen, dass bei komplexeren XSS Angriffen noch mehr Seiten betroffen sind.
+ 
+
+
 
 \section{Webforum}
 In Abschnitt XXX wurde ein sehr beschränkter Crawldurchlauf der Alexa Top 500 Webseiten durchgeführt. Dies ist sinnvoll, da so ein fester Datensatz verwendet wurde. In einem zweiten Crawldurchlauf sollen nun viele möglichst verschiedene Seiten besucht werden. Die Hoffnung ist, dadurch so viele Sicherheitslücken wie möglich zu finden.
@@ -255,6 +272,18 @@ Die maximale Crawltiefe wird auf 7 gestellt, da nur eine einzige Startseite ange
 \subsection{Daten zum Crawlvorgang}
 Am Ende des Crawlvorgangs wurden insgesamt 1.253.853 Webseiten entdeckt und 75.621 besucht. Das sind etwa gleich viele besuchte Webseiten, wie im vorherigen Versuch. Auf eine Tabelle mit den besuchten Seiten pro Suchtiefe wird hier verzichtet. Die Geschwindigkeit, mit der die Webseiten besucht wurden, ist ebenfalls gleich geblieben. Der Crawlvorgang wurde nach ca. drei Tagen gestoppt.
 \subsection{Daten zur Analyse}
+Von den 75.621 besuchten Webseiten gab es 43.677, die einen Taintflow enthalten. In diesem Versuch gibt es mit  42,2\% deutlich mehr Webseiten ganz ohne Taintflows, verglichen zum Alexa Top 500 Crawl. Das lässt sich möglicherweise dadurch erklären, dass mehr Homepages besucht wurden, die oft nur statischen Inhalt besitzen. Insgesamt wurden 102.291 Taintflows gefunden,diesem konkreten Fall 52.933 Elemente hat. Für 18.6\% aller gefundenen Taintflows kann also automatisch ein Exploit generiert werden.  das sind 2,3 pro Seite mit mindestens einem Flow. 
+
+Die Verteilung der Quellen und Senken ist sehr ähnlich wie im vorherigen Versuch. Daher wird diese hier nicht noch einmal genau aufgezeigt. Insgesamt wurden 10.424 potenziell angreifbare Taintflows gefunden, was 20\% der gesamt gefundenen Flows entspricht (19\% bei Alexa 500).
+
+Nach der Validierung bleiben 115 erfolgreiche Exploits übrig. Da sehr viele verschiedene Webseiten besucht worden sind, fällt die Anzahl der duplizierten Exploits auch deutlich geringer aus. Nach Filterung sind noch 95 Exploits übrig. Das sind dreimal so viele, wie bei den Alexa Top 500, obwohl es nur ein Fünftel der potenziellen Taintflows gibt. \\
+Unter den gefunden Webseiten gibt es auch einige bekannte, wie zum Beispiel accuweather.com, unicef.fr, abc.es und www.telefonica.com. Auffällig sind auch Skripte, die gleich auf mehreren unterschiedlichen Seiten für Schwachstellen sorgen. So gibt es Beispielsweise ein Skript eines Werbeanbieters, welches eine XSS Sicherheitslücke enthält und so von den gefundenen Exploits, für acht verschieden verantwortlich ist. Dieses Skript macht wahrscheinlich noch hunderte andere Webseiten unsicher.
+
+
+
+
+
+
 
 
 \chapter{Fazit}
