@@ -32,19 +32,19 @@ Dieser Aufbau erlaubt es einem Benutzer das Taintnotifier Plugin zu installieren
 \section{Crawler Anforderungen}
 Die folgenden Anforderungen muss der Crawler erfüllen:
 \begin{itemize}
-	\item Der Crawler soll horizontal skalierbar sein. Das heißt, es soll möglich sein mehrere Taintfox Instanzen zu starten, die alle an dem Crawlprozess teilnehmen. Dies soll auch möglich sein, wenn diese Instanzen auf unterschiedlichen Rechner laufen.
 	\item Der Crawlvorgang soll gestartet werden können, indem eine Liste von URLs angegeben wird, die als Startseiten verwendet werden.
 	\item Nachdem der Crawler gestartet wurde soll dieser automatisch alle Startseiten besuchen und aus diesen weitere URLs extrahieren, die danach besucht werden.
 	\item Auf jeder Seite, die vom Crawler besucht wird, soll ein Analyseplugin ausgeführt werden können. Erst wenn dieses mit der Bearbeitung der Seite fertig ist, darf sie geschlossen werden.
 	\item Das Analyseplugin kann dem Crawler zu jeder besuchten Seite ein Datenpaket mit Analyseergebnissen übergeben. Diese Daten sollen dann zentral in einer Datenbank abgelegt werden.
 	\item Es soll die Option auf allen Seiten keine externen Links zu verfolgen. Das heißt der Crawlvorgang wird auf die Domains der Startseiten beschränkt.
-	\item Es soll eine maximale Suchtiefe angegeben werden können. Sind alle Seiten besucht, ist der Crawlvorgang beendet.	
+	\item Es soll eine maximale Suchtiefe angegeben werden können. Sind alle Seiten besucht, ist der Crawlvorgang beendet.
+	\item Der Crawler soll horizontal skalierbar sein. Das heißt, es soll möglich sein mehrere Taintfox Instanzen zu starten, die alle an dem Crawlprozess teilnehmen. Dies soll auch möglich sein, wenn diese Instanzen auf unterschiedlichen Rechner laufen.
 \end{itemize}
 
 \section{Crawler Typen}
-In diesem Kapitel wird eine Architektur für den Crawler entworfen. Dabei wird darauf geachtet, die Anforderungen aus Kapitel XXX zu erfüllen und gleichzeitig in die Bestehende Umgebung zu passen.
+In diesem Kapitel wird eine Architektur für den Crawler entworfen. Dabei wird darauf geachtet, die Anforderungen aus Kapitel XXX zu erfüllen und gleichzeitig in die bestehende Umgebung zu passen.
 
-Anforderung XXX verlangt, dass der Crawlvorgang beschleunigt werden kann, indem mehrere Taintfox Instanzen gestarten werden, die alle am Crawlprozess teilnehmen. Dabei muss allerdings gewährleistet werden, dass keine Seite doppelt besucht wird. Die einzelnen Instanzen müssen sich also in irgendeiner Form darüber verständigen, wer für welche URLs zuständig ist. 
+Anforderung XXX verlangt, dass der Crawlvorgang beschleunigt werden kann, indem mehrere Taintfox Instanzen gestartet werden, die alle am Crawlprozess teilnehmen. Dabei muss allerdings gewährleistet werden, dass keine Seite doppelt besucht wird. Die einzelnen Instanzen müssen sich also in irgendeiner Form darüber verständigen, wer für welche URLs zuständig ist. 
 Es handelt sich also um "Distributed Web Crawling", da viele einzelne Prozesse verwendet werden, um das Crawlen zu beschleunigen. 
 Cho and Garcia-Molina haben in diesem Umfeld 3 Typen von verteilten Crawlern erforscht: %[http://ilpubs.stanford.edu:8090/733/1/2002-9.pdf]
 \begin{description}
@@ -86,29 +86,39 @@ Die Klasse AnalysisResultRepository speichert die Analyseergebnisse jeder besuch
 
 
 \subsection{Datenmodell}
-Der Crawler verwendet eine Relationale Datenbank, um seine Daten zu persistieren. Dabei werden 2 Tabellen verwendet. In der Tabelle "pages" werden alle gefundenen Seiten gespeichert. Dazu gehören sowohl besuchte als auch unbesuchte Seiten.
-id \\
-Eindeutige Identifikationsnummer \\
-url \\
-Komplette URL der Seite samt Query Parameter \\
-foundAt \\
-Zeitpunkt zu dem die Seite gefunden wurde \\
-domain \\
-Die domain der Seite. Auf der Webseite https://www.dhbw-karlsruhe.de/allgemein/ ist dies zum Beispiel dhbw-karlsruhe \\
-topLevelDomain \\
-Die Top-Level-Domain der Webseite. Zum Beispiel de, com, co.uk, net usw... \\
-crawlDepth \\
-Gibt an wie viele Links von der Startseite aus verfolgt wurden, um auf diese Seite zu gelangen \\
-visitStatus \\
-Kann drei verschiedene Werte annehmen. Ist der Wert "visited", so wurde diese Seite bereits besucht und muss nicht nochmal gecrawlt werden. Der Status "unvisited" gibt an, dass die Seite noch nicht besucht wurde und in ein Arbeitspakt gepackt werden kann. Der letzte Zustand ist "pending". Eine Seite, die zur Verarbeitung an einen Arbeiter geschickt wurde, erhält diesen Zustand bis eine Antwort erhalten wurde. Wird der Crawlprozess unterbrochen und später fortgesetzt, so wird beim Neustart des Master-Servers alle Seiten mit dem Zustand "pending" zurück auf "unvisited" gesetzt.\\
+Der Crawler verwendet eine Relationale Datenbank, um seine Daten zu persistieren. Dabei werden 2 Tabellen verwendet. In der Tabelle "pages" werden alle gefundenen Webseiten gespeichert. Dazu gehören sowohl besuchte als auch unbesuchte Webseiten.
+
+
+\begin{tabular}{c|p{10cm}}
+	Spaltenname & Beschreibung  \\ 
+	\hline\hline
+	id & Eindeutige Identifikationsnummer \\ 
+	\hline 
+	url & Komplette URL der Seite samt Query Parameter \\
+	\hline 
+	foundAt & Zeitpunkt zu dem die Seite gefunden wurde \\
+	\hline 
+	domain & Die domain der Seite. Auf der Webseite https://www.dhbw-karlsruhe.de/allgemein/ ist dies zum Beispiel dhbw-karlsruhe \\
+	\hline 
+	topLevelDomain & Die Top-Level-Domain der Webseite. Zum Beispiel de, com, co.uk, net usw.  \\
+	\hline 
+	crawlDepth & Gibt an wie viele Links von der Startseite aus verfolgt wurden, um auf diese Seite zu gelangen \\
+	\hline 
+	visitStatus & Kann drei verschiedene Werte annehmen. Ist der Wert "visited", so wurde diese Seite bereits besucht und muss nicht nochmal gecrawlt werden. Der Status "unvisited" gibt an, dass die Seite noch nicht besucht wurde und in ein Arbeitspakt gepackt werden kann. Der letzte Zustand ist "pending". Eine Seite, die zur Verarbeitung an einen Arbeiter geschickt wurde, erhält diesen Zustand bis eine Antwort erhalten wurde. Wird der Crawlprozess unterbrochen und später fortgesetzt, so wird beim Neustart des Master-Servers alle Seiten mit dem Zustand "pending" zurück auf "unvisited" gesetzt. \\
+\end{tabular} 
+
 
 In der Tabelle "`analysis\_result"' werden die Analyseergebnisse der besuchten Seiten gespeichert. Da diese Ergebnisse von einem beliebigen Analyseplugin kommen, werden die eigentlichen Daten als JSON gespeichert. Dadurch ist nicht fest vorgegeben, welche Daten gespeichert werden können. Ein Eintrag in diese Tabelle wird nur gemacht, wenn auf einer Webseite tatsächlich Analyseergebnisse anfallen.
-id \\
-Eindeutige Identifikationsnummer \\
-payload \\
-Ein JSON Objekt in welchem die spezifischen Analyseergebnisse gespeichert sind \\
-page \\
-Ein Fremdschlüssel für die Tabelle "pages". Referenziert die Webseite, auf dem die Analyse durchgeführt wurde \\
+
+\begin{tabular}{c|p{10.5cm}}
+	Spaltenname & Beschreibung  \\ 
+	\hline\hline
+	id & Eindeutige Identifikationsnummer \\ 
+	\hline 
+	payload & Ein JSON Objekt in welchem die spezifischen Analyseergebnisse gespeichert sind \\
+	\hline 
+	page & Ein Fremdschlüssel für die Tabelle "pages". Referenziert die Webseite, auf dem die Analyse durchgeführt wurde  \\
+\end{tabular} 
 
 \subsection{Crawl Strategien}
 \section{Worker Plugin}
