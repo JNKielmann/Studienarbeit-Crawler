@@ -36,6 +36,15 @@ toc=bibliography,	% Literaturverzeichnis im Inhaltsverzeichnis darstellen
 
 \linespread{1.1}
 
+\usepackage[
+backend=biber,
+style=numeric,
+citestyle=numeric 
+]{biblatex}
+%\usepackage[style=numeric-comp]{biblatex}
+\addbibresource{biblatex.bib}
+
+
 % PDF Einstellungen
 \usepackage{hyperref}
 % (Farb-)einstellungen für die Links im PDF
@@ -104,9 +113,10 @@ toc=bibliography,	% Literaturverzeichnis im Inhaltsverzeichnis darstellen
 	{ç}{{\c c}}1 {Ç}{{\c C}}1 {ø}{{\o}}1 {å}{{\r a}}1 {Å}{{\r A}}1
 	{€}{{\EUR}}1 {£}{{\pounds}}1
 }
-\lstdefinestyle{mystyle}{
-	morekeywords={REFERENCES, DATABASE, BOOL, TEXT, DATETIME(), USE} 
+\lstdefinestyle{SQL}{
+	morekeywords={SELECT, FROM, GROUP, BY, ORDER, ASC, DESC, JOIN ON, DISINCT, WHERE, AND, OR, LIMIT} 
 }
-\lstdefinestyle{pseudocode}{
-	morekeywords={loop, var, Parallel, Option1, Option2, Option3, begin, then } 
-}
+
+
+
+

@@ -1,4 +1,5 @@
 \chapter{Einleitung}
+\cite{myid}
 Im Zeitalter des Internets werden immer mehr Dienstleistungen im Internet angeboten. Diese gehen weit über statische Webseiten, wie man sie aus den Anfängen des Internets kennt, hinaus. Diese sogenannten Webapplikationen sind komplexe Anwendungen, wie zum Beispiel Onlineshops, soziale Netzwerke oder Onlinebanking-Portale. Aufgrund der Komplexität dieser Anwendungen kann es schnell zu ungewollten Sicherheitslücken kommen. Dies ist kritisch, da oft sehr sensible Daten im Spiel sind. \\
 Cross-Site-Scripting ist ein Angriff auf eine solche Sicherheitslücke, der in vielen modernen Webapplikationen erfolgreich durchgeführt werden kann. Dabei wird versucht auf eine fremde Webseite Schadcode zu hinterlegen, welcher danach von anderen Benutzern unbeabsichtigt ausgeführt wird. \\
 Bei SAP wird versucht, solche Schwachstellen automatisiert aufzudecken. Aus diesem Grund wurde ein modifizierter Firefox entwickelt, welcher es ermöglicht herauszufinden, welche Eingaben des Benutzers an kritische Stellen in der Webseite gelangen.
@@ -203,20 +204,21 @@ In der Tabelle \enquote{analysis\_result} werden die Analyseergebnisse der besuc
 Die PageRepository Klasse des Master-Servers erlaubt das Erstellen von neuen Arbeitspaketen. Es gibt dabei verschiedenen Strategien, wie entschieden wird, welche Webseiten als nächstes besucht werden sollen. Einige dieser Strategien und deren Implementierung auf der page-Tabelle werden im Folgenden vorgestellt.
 \subsubsection{Least Recent First} 
 Bei dieser Strategie werden immer die Webseiten als nächstes besucht, die schon am längsten als unbesucht in der Tabelle markiert sind. Stellt man sich alle gefunden Seiten als Baum vor, so ähnelt diese Strategie einer Breitensuche. Es werden daher zuerst alle Seiten einer Crawltiefe bearbeitet, bevor die nächst tiefere Ebene abgearbeitet wird. Diese Strategie ist oft der Standard bei einfachen Webcrawlern, da sie einfach zu implementieren ist und garantiert, dass zuerst eine Crawltiefe abgearbeitet wird, bevor tiefere Links in Betracht gezogen werden.\\
-Das Listing \ref{lst:LeastRecentFirst} zeigt die Implementierung mit einer einfachen SQL-Abfrage. Es werden dabei alle Webseiten, die noch den Status unbesucht haben, aufsteigend anhand der Spalte foundAt sortiert. Mit dem Schlüsselwort LIMIT wird das Ergebnis dann auf die 10 ältesten URLs begrenzt. Somit erhält man ein Arbeitspaket mit 10 Elementen.
+Das Listing \ref{lst:LeastRecentFirst} zeigt die Implementierung mit einer einfachen SQL-Abfrage. Es werden dabei alle Webseiten, die noch den Status unbesucht haben, aufsteigend anhand der Spalte foundAt sortiert. Mit dem Schlüsselwort LIMIT wird das Ergebnis dann auf die 10 ältesten URLs begrenzt. Somit erhält man ein Arbeitspaket mit 10 Elementen.\\
 \begin{lstlisting}[
 caption={SQL-Abfrage für least recent first Strategie},
-label=lst:LeastRecentFirst]
+label=lst:LeastRecentFirst,
+style=SQL]
 SELECT id, url FROM page
 WHERE visitStatus='unvisited'
 ORDER BY foundAt ASC
 LIMIT 10
 \end{lstlisting}
 
-\subsection{Most Recent First}  
+\subsubsection{Most Recent First}  
 Diese Strategie stellt das Gegenstück zur vorherigen dar. Es werden die neusten Webseiten zuerst besucht. Dadurch gelangt man sehr schnell an die maximale Crawltiefe. Dieses Verfahren ist mit einer Tiefensuche vergleichbar. Vorteilhaft kann das sein, wenn man versucht schnell auf sehr tiefe Webseiten zu gelangen, ohne dabei unbedingt alle Webseiten einer bestimmten Crawltiefe zu besuchen. Das entsprechende SQL-Statement ähnelt dem aus Listing \ref{lst:LeastRecentFirst}, allerdings wird absteigend sortiert.
 
-\subsection{Least Visited Domain}
+\subsubsection{Least Visited Domain}
 Hierbei handelt es sich um eine spezielle Strategie für den Anwendungsfall diese Webcrawlers. Es wird nach der Domäne gesucht, zu der es noch unbesuchte Webseiten in der Tabelle gibt, aber möglichst wenige bereits besuchte Webseiten. Somit werden schnell viele Webseiten auf verschiedenen Domänen besucht. Dies findet Anwendung, wenn so schnell wie möglich viele Sicherheitslücken gefunden werden sollen, denn dabei ist es Sinnvoll viele möglichst unterschiedliche Seiten zu besuchen. \\
 Die SQL-Abfrage für diese Strategie, zusehen in Listing \ref{lst:LeastVisitedDomain}, ist etwas komplizierter und kann bei größeren Tabellen inperformant sein.
 
@@ -294,7 +296,9 @@ Die Abbildung \ref{fig:VerteilungQuellenSenken}  zeigt die Verteilung der Quelle
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=1\textwidth]{Bilder/Diagram1.png}
+	\hspace*{-1cm}
+	\vspace*{-0.5cm}
+	\includegraphics[width=1.15\textwidth]{Bilder/Diagram1.png}
 	\caption{Verteilung der Quellen und Senken von allen Taintflows}
 	\label{fig:VerteilungQuellenSenken}
 \end{figure}
@@ -305,7 +309,9 @@ Die beiden Top Senken sind \textit{document.write} und \textit{innerHTML}. Die m
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=1\textwidth]{Bilder/Diagram2.png}
+	\hspace*{-1.2cm}
+	\vspace*{-1.2cm}
+	\includegraphics[width=1.2\textwidth]{Bilder/Diagram2.png}
 	\caption{Verteilung der Quellen und Senken von potentiell angreifbaren Taintflows}
 	\label{fig:VerteilungQuellenSenkenAngreifbar}
 \end{figure}
