@@ -49,6 +49,7 @@ Der Taintfox ist eine modifizierte Version des Mozilla Firefox. Um Cross-Site-Sc
 
 
 \section{Firefox Plugins}
+\label{sec:FirefoxPlugins}
 In diesem Abschnitt wird der generelle Aufbau von Firefox Plugins beschrieben. Für diese Arbeit ist der Einsatz von solchen Plugins nötig, um Webseiten automatisiert im Taintfox zu öffnen. Da der Taintfox nur ein modifizierter Firefox ist, können für beide Browser die gleichen Plugins verwendet werden. In der Firefox Dokumentation ist statt Plugin auch oft die Rede von Add-On. Diese beiden Begriffe werden im weiteren Verlauf der Arbeit synonym verwendet. \\
 Für die Entwickelung von Firefox Plugins gibt es zwei Optionen: das Add-On SDK und die Webextension API. Beide Ansätze werden im Folgenden kurz angesprochen.
 \subsection{Firefox Add-On SDK}
@@ -58,11 +59,13 @@ Diese hohe Individualisierbarkeit hat allerdings auch Nachteile. So ist es zum B
 Die WebExtension API ist der Nachfolger des Add-On SDKs. Auch mit ihr lassen sich Plugins erstellen, die typische Browserfunktionalitäten ansteuern. Da die WebExtension API zum größten Teil kompatibel mit der Extension API des Chrome ist, sind die damit erzeugten Plugins browserunabhängig und laufen somit auch im Chrome, Opera und Microsoft Edge. \\
 Zum Zeitpunkt, zu dem diese Arbeit geschrieben wurde, ist die WebExtension API allerdings noch nicht ganz vollständig und tiefe Eingriffe in den Firefox sind nicht mehr möglich. Trotzdem empfiehlt Mozilla den Umstieg auf WebExtensions, da dies der zukünftig unterstützte Weg ist, Plugins für den Firefox zu erstellen.
 \subsection{Plugin Aufbau}
+\label{sec:FirefoxPluginsAufbau}
 Der Aufbau eines Firefox Plugins, welches mit dem Firefox Add-On SDK erstellt wurde, ist grundlegend gleich zu dem Aufbau einer WebExtension. Der Code ist in zwei getrennte Bereiche geteilt. Der Grundcode des Plugins hat Zugriff auf alle Firefox APIs und kann diese nutzen, um zum Beispiel neue Tabs zu öffnen, Benachrichtigungen anzuzeigen oder das Kontextmenü zu erweitern. Dieser Code kann zwar eine neue Seite aufrufen, allerdings kann nicht direkt auf den Inhalt dieser Seite zugegriffen werden. Genauer gesagt gibt es keinen Zugriff auf das DOM der geladenen Seite. \\
 An dieser Stelle kommen sogenannte \enquote{Content Scripts} zum Einsatz. Diese haben Zugriff auf den Webinhalt und verhalten sich wie ein Script, welches auf der entsprechenden Webseite eingebettet ist. Der Grundcode kann diese Content Scripts in beliebe Webseiten injizieren, um so gewisse Aufgaben auf dieser Seite zu erledigen. Die Kommunikation zwischen Grundcode und Content Script findet dabei über ein port Objekt statt, welches das asynchrone Versenden von Nachrichten zwischen den beiden erlaubt.
 
 \chapter{Entwurf}
 \section{Anforderungsanalyse}
+\label{sec:Anforderungsanalyse}
 Im Gespräch mit der Web-Security Abteilung von SAP wurden eine Reihe von Anforderungen an den Webcrawler erarbeitet. Die folgende Liste beschreibt diese jeweils in einem Abschnitt und gibt jeder Anforderung eine eindeutige Kennung (A + Zahl), sodass auf sie an späteren Stellen dieser Arbeit referenziert werden können. Sie sind dabei in keiner besonderen Reihenfolge gelistet, sondern alle wichtig, um den Webcrawler effektiv einsetzen zu können.
 \begin{description}
 	\item[ A1 ] Der Crawlvorgang soll gestartet werden können, indem eine Liste von URLs angegeben wird, die als Startseiten verwendet werden. Die Liste von URLs soll als CSV-Datei abgelegt sein. Durch eine Kommandozeilenoption kann der Pfad zu dieser Datei beim Start mit übergeben werden. Alternativ kann auch nur eine einzige URL direkt in der Kommandozeile angegeben werden
@@ -80,7 +83,7 @@ Im Gespräch mit der Web-Security Abteilung von SAP wurden eine Reihe von Anford
 
 
 \section{Bestehende Umgebung}
-In diesem Abschnitt wird nun zuerst die bestehende Umgebung beschrieben. Damit sind die einzelnen Komponenten und Tools, die bereits existieren, und deren Zusammenarbeit gemeint. Die Abbildung XXX zeigt ein Diagramm mit den einzelnen Komponenten. Wie zu sehen ist, existiert bereits ein Plugin für den Taintfox mit dem Namen \enquote{Taintnotifier}. Dieses Plugin reagiert auf das taintreport Event des Taintfox. Um zu überprüfen, ob es sich bei dem gefundenen Taintflow um eine echte Schwachstelle handelt, die ausgenutzt werden kann, gibt es einen extra Validierungsservice. Das Plugin sendet diesem die potenzielle Schwachstelle per HTTP. Der Service verwendet PhantomJS, um verschiedene Angriffe auszuprobieren, ohne einen kompletten Browser nutzen zu müssen. Sobald die Validierung abgeschlossen ist, werden die Ergebnisse an das Plugin zurückgeliefert. Alle Taintflows, die auf einer Webseite gefunden wurden, werden zusammen mit den entsprechenden Validierungsergebnissen in den Entwicklertools angezeigt. \\
+In diesem Abschnitt wird nun zuerst die bestehende Umgebung beschrieben. Damit sind die einzelnen Komponenten und Tools, die bereits existieren, und deren Zusammenarbeit gemeint. Die Abbildung \ref{fig:BestehendeUmgebung} zeigt ein Diagramm mit den einzelnen Komponenten. Wie zu sehen ist, existiert bereits ein Plugin für den Taintfox mit dem Namen \enquote{Taintnotifier}. Dieses Plugin reagiert auf das taintreport Event des Taintfox. Um zu überprüfen, ob es sich bei dem gefundenen Taintflow um eine echte Schwachstelle handelt, die ausgenutzt werden kann, gibt es einen extra Validierungsservice. Das Plugin sendet diesem die potenzielle Schwachstelle per HTTP. Der Service verwendet PhantomJS, um verschiedene Angriffe auszuprobieren, ohne einen kompletten Browser nutzen zu müssen. Sobald die Validierung abgeschlossen ist, werden die Ergebnisse an das Plugin zurückgeliefert. Alle Taintflows, die auf einer Webseite gefunden wurden, werden zusammen mit den entsprechenden Validierungsergebnissen in den Entwicklertools angezeigt. \\
 Das Taintnotifier Plugin bietet außerdem die Möglichkeit, einen export Server anzugeben. An diesen werden per Http alle Funde gesendet, wo sie dann in einer MongoDB gespeichert werden. Später können diese Informationen dann über eine Weboberfläche abgerufen werden. \\
 Dieser Aufbau erlaubt es einem Benutzer das Taintnotifier Plugin zu installieren und spezielle Webseiten gezielt aufzurufen, um diese auf Schwachstellen zu testen. Wie in der Aufgabestellung bereits angesprochen, soll dieser Prozess nun automatisiert werden, damit viele Webseiten in kurzer Zeit überprüft werden können.
 
@@ -88,9 +91,11 @@ Dieser Aufbau erlaubt es einem Benutzer das Taintnotifier Plugin zu installieren
 	\centering
 		\includegraphics[width=0.8\textwidth]{Bilder/AlteUmgebung.png}
 	\caption{Diagramm mit Komponenten der bestehenden Umgebung}
+	\label{fig:BestehendeUmgebung}
 \end{figure}
 
 \section{Webrawler Architekturen}
+\label{sec:WebcrawlerArchitekturen}
 Anforderung A8 verlangt, dass der Crawlvorgang beschleunigt werden kann, indem mehrere Taintfox Instanzen gestartet werden, die alle am Crawlprozess teilnehmen. Jeder dieser Instanzen wird als Arbeiter bezeichnet. \\ 
 Es handelt sich also um \enquote{Distributed Web Crawling}, da viele einzelne Prozesse verwendet werden, um das Crawlen zu beschleunigen. 
 Cho and Garcia-Molina haben in diesem Umfeld 3 Typen von verteilten Crawlern erforscht: %[http://ilpubs.stanford.edu:8090/733/1/2002-9.pdf]
@@ -110,18 +115,19 @@ Die Aufteilung in einen Koordinator-Server und vielen Arbeitern ist außerdem Hi
 
 
 \section{Neue Umgebung}
-Aufgrund der Anforderungen des Webcrawlers muss die bestehende Umgebung geändert werden. Abbildung XXX zeigt ein Diagramm mit allen wichtigen Komponenten und wie diese miteinander interagieren. In den folgenden Abschnitten werden nun die einzelnen Komponenten genauer beschrieben.
+Aufgrund der Anforderungen des Webcrawlers muss die bestehende Umgebung geändert werden. Abbildung \ref{fig:NeueUmgebung} zeigt ein Diagramm mit allen wichtigen Komponenten und wie diese miteinander interagieren. In den folgenden Abschnitten werden nun die einzelnen Komponenten genauer beschrieben.
 
 \begin{figure}
 	\centering
 	\includegraphics[width=0.9\textwidth]{Bilder/NeueUmgebung.png}
 	\caption{Diagramm mit Komponenten der neuen Umgebung}
+	\label{fig:NeueUmgebung}
 \end{figure}
 
 \subsection{Master-Server}
-In Abschnitt XXX wurde sich für ein Crawler mit dynamischer Zuweisung entschieden. Bei dieser Crawlerarchitektur gibt es einen zentralen Koordinator. Diese Rolle übernimmt in der neuen Umgebung der Master-Server. Er steuert den Crawlprozess, indem er alle bereits besuchten URLs speichert, die Warteschlange mit neuen URLs verwaltet, Arbeitspakete an die Arbeiter verteilt und die Analyseergebnisse jeder besuchten Webseite speichert. Realisiert wird der Master-Server durch eine NodeJS Anwendung. Der Master-Server ist an eine Datenbank angebunden, die verwendet wird, um Daten wie die bereits besuchten Seiten, unbesuchte Seiten und Analyseergebnisse permanent zu speichern. Dies ist nötig, da der Webcrawler, wie in Anforderung A9 beschrieben, nach einem Neustart an der Stelle weiter machen soll, an der er aufgehört hat.
+In Abschnitt \ref{sec:WebcrawlerArchitekturen} wurde sich für ein Crawler mit dynamischer Zuweisung entschieden. Bei dieser Crawlerarchitektur gibt es einen zentralen Koordinator. Diese Rolle übernimmt in der neuen Umgebung der Master-Server. Er steuert den Crawlprozess, indem er alle bereits besuchten URLs speichert, die Warteschlange mit neuen URLs verwaltet, Arbeitspakete an die Arbeiter verteilt und die Analyseergebnisse jeder besuchten Webseite speichert. Realisiert wird der Master-Server durch eine NodeJS Anwendung. Der Master-Server ist an eine Datenbank angebunden, die verwendet wird, um Daten wie die bereits besuchten Seiten, unbesuchte Seiten und Analyseergebnisse permanent zu speichern. Dies ist nötig, da der Webcrawler, wie in Anforderung A9 beschrieben, nach einem Neustart an der Stelle weiter machen soll, an der er aufgehört hat.
 \subsection{Worker-Plugin}
-Innerhalb des Taintfox kann man im Diagramm XXX eine Komponente mit dem Namen \enquote{Worker-Plugin} sehen. Dabei handelt es sich um ein Firefox Plugin, welches als Arbeiter für den Webcrawler fungiert. Es nimmt die Arbeitspakete entgegen und weist den Taintfox an, die einzelnen Webseiten zu besuchen. Im Diagramm ist angedeutet, dass es mehrere Taintfox Instanzen mit entsprechenden Worker-Plugins geben kann. Jeder dieser Arbeiter meldet sich bei seinem Start bei dem Master-Server an. \\
+Innerhalb des Taintfox kann man im Diagramm \ref{fig:NeueUmgebung} eine Komponente mit dem Namen \enquote{Worker-Plugin} sehen. Dabei handelt es sich um ein Firefox Plugin, welches als Arbeiter für den Webcrawler fungiert. Es nimmt die Arbeitspakete entgegen und weist den Taintfox an, die einzelnen Webseiten zu besuchen. Im Diagramm ist angedeutet, dass es mehrere Taintfox Instanzen mit entsprechenden Worker-Plugins geben kann. Jeder dieser Arbeiter meldet sich bei seinem Start bei dem Master-Server an. \\
 Für die Kommunikation zwischen Arbeiter und Master kommen zwei Protokolle in Frage: HTTP und Websocket. Bei HTTP handelt es sich um ein Request/Response Protokoll. Der Klient stellt also eine Anfrage an den Server und bekommt von diesem eine Antwort. Jeder Arbeiter müsste also ein Polling durchführen, um neue Arbeitspakete zu erhalten. Das bedeutet, sobald ein Arbeiter sein Arbeitspaket bearbeitet hat, muss er in gewissen Zeitabständen den Master nach einem neuen Fragen. \\
 Polling ist generell keine besonders schöne Lösung. Abhilfe schafft das Websocket Protokoll. Hier ist es dem Server möglich direkt Nachrichten an einen Klienten zu senden, ohne das dieser eine explizite Anfrage gestellt hat. Diese Art des Datenaustausches nennt man \enquote{pushing}. Für dieses Projekt wurde sich für Websockets entschieden, damit eine bidirektionale Verbindung zwischen Master und Arbeiter möglich ist.\\
 \subsection{Analyse-Plugin}
@@ -147,8 +153,7 @@ Die Klasse Crawler stellt die zentrale Klasse des Webcrawlers dar. Sie bietet di
 Für jeden Arbeiter, der sich bei dem Master-Server registriert hat, existiert eine Instanz der Klasse Worker. Diese kümmert sich um die Verwaltung der Websocketverbindung und speichert, wie viele Arbeitspakte momentan bearbeitet werden. Dadurch kann abgefragt werden, ob dieser Arbeiter noch ein weiteres Arbeitspaket verarbeiten kann. \\
 Alle Worker werden von der Klasse WorkerPool verwaltet, welche Auskunft darüber gibt, ob es momentan einen Worker gibt, der noch Arbeit benötigt und es durch die Methode \textit{processWorkPackage} erlaubt ein Arbeitspaket zu verarbeiten. Dabei wird vom WorkerPool entschieden, welcher Arbeiter am besten dafür geeignet ist. An dieser Stelle kann also ein Loadbalancing eingebaut werden, um die Arbeiter gleichmäßig auszulasten.
 
-Die Klasse PageRepository hat die Aufgabe alle gefundenen Webseiten zu verwalten. Mit Hilfe der \enquote{addPages} Methode können neu gefundene Webseiten hinzugefügt werden. Diese sind dann zunächst als unbesucht markiert. Wird versucht eine Webseite hinzuzufügen, die bereits enthalten ist, wird diese ignoriert.\\
-Die Methode \textit{makeWorkPackage} erlaubt es ein Arbeitspaket einer beliebigen Größe zu erstellen. Dabei werden entsprechend viele Webseiten, die noch als unbesucht markiert sind, zurückgeliefert. In dieser Funktion kann also definiert werden, welche Webseiten als nächstes bearbeitet werden sollen. Es gibt verschiedene Strategien, wie dies bestimmt werden kann. Diese Strategien werden in Abschnitt XXX genauer beschrieben. Durch das Aufrufen der Methode \textit{setPagesVisited} kann eine Liste von Webseiten als besucht markiert werden. \\
+Die Klasse PageRepository hat die Aufgabe alle gefundenen Webseiten zu verwalten. Mit Hilfe der \enquote{addPages} Methode können neu gefundene Webseiten hinzugefügt werden. Diese sind dann zunächst als unbesucht markiert. Wird versucht eine Webseite hinzuzufügen, die bereits enthalten ist, wird diese ignoriert. Die Methode \textit{makeWorkPackage} erlaubt es ein Arbeitspaket einer beliebigen Größe zu erstellen. Dabei werden entsprechend viele Webseiten, die noch als unbesucht markiert sind, zurückgeliefert. In dieser Funktion kann also definiert werden, welche Webseiten als nächstes bearbeitet werden sollen. Es gibt verschiedene Strategien, wie dies bestimmt werden kann. Diese Strategien werden in Abschnitt \ref{subsec:CrawlStrategien} genauer beschrieben. Durch das Aufrufen der Methode \textit{setPagesVisited} kann eine Liste von Webseiten als besucht markiert werden. \\
 Mit welcher unterliegenden Technik die Klasse PageRepository implementiert wurde, ist dabei von außen nicht zu erkennen. Für dieses Projekt wurde sich für eine Implementierung mit einer MySQL Datenbank entschieden, da die gefundenen Webseiten so persistent gespeichert werden und der Crawlprozess somit auch nach einem Neustart des Master-Servers fortgesetzt werden kann. Es ist aber durchaus vorstellbar, zu einem späteren Zeitpunkt noch andere Implementierungen bereitzustellen. So zum Beispiel eine In-Memory-Datenbank, wodurch die Abfragen an das PageRepository beschleunigt werden können.
 
 Die Klasse AnalysisResultRepository speichert die Analyseergebnisse jeder besuchten Webseite. Das Interface der Klasse ist sehr simpel und bietet nur die Methode \textit{addAnalysisResult} mit der ein neues Analyseergebnis gespeichert werden kann. Wie auch bei dem PageRepository wird zum Speichern auf eine MySQL Datenbank zurückgegriffen. Es könnte stattdessen aber zum Beispiel auch eine MongoDB verwendet werden.
@@ -194,35 +199,72 @@ In der Tabelle \enquote{analysis\_result} werden die Analyseergebnisse der besuc
 \end{table}
 
 \subsection{Crawl Strategien}
+\label{subsec:CrawlStrategien}
+Die PageRepository Klasse des Master-Servers erlaubt das Erstellen von neuen Arbeitspaketen. Es gibt dabei verschiedenen Strategien, wie entschieden wird, welche Webseiten als nächstes besucht werden sollen. Einige dieser Strategien und deren Implementierung auf der page-Tabelle werden im Folgenden vorgestellt.
+\subsubsection{Least Recent First} 
+Bei dieser Strategie werden immer die Webseiten als nächstes besucht, die schon am längsten als unbesucht in der Tabelle markiert sind. Stellt man sich alle gefunden Seiten als Baum vor, so ähnelt diese Strategie einer Breitensuche. Es werden daher zuerst alle Seiten einer Crawltiefe bearbeitet, bevor die nächst tiefere Ebene abgearbeitet wird. Diese Strategie ist oft der Standard bei einfachen Webcrawlern, da sie einfach zu implementieren ist und garantiert, dass zuerst eine Crawltiefe abgearbeitet wird, bevor tiefere Links in Betracht gezogen werden.\\
+Das Listing \ref{lst:LeastRecentFirst} zeigt die Implementierung mit einer einfachen SQL-Abfrage. Es werden dabei alle Webseiten, die noch den Status unbesucht haben, aufsteigend anhand der Spalte foundAt sortiert. Mit dem Schlüsselwort LIMIT wird das Ergebnis dann auf die 10 ältesten URLs begrenzt. Somit erhält man ein Arbeitspaket mit 10 Elementen.
+\begin{lstlisting}[
+caption={SQL-Abfrage für least recent first Strategie},
+label=lst:LeastRecentFirst]
+SELECT id, url FROM page
+WHERE visitStatus='unvisited'
+ORDER BY foundAt ASC
+LIMIT 10
+\end{lstlisting}
 
+\subsection{Most Recent First}  
+Diese Strategie stellt das Gegenstück zur vorherigen dar. Es werden die neusten Webseiten zuerst besucht. Dadurch gelangt man sehr schnell an die maximale Crawltiefe. Dieses Verfahren ist mit einer Tiefensuche vergleichbar. Vorteilhaft kann das sein, wenn man versucht schnell auf sehr tiefe Webseiten zu gelangen, ohne dabei unbedingt alle Webseiten einer bestimmten Crawltiefe zu besuchen. Das entsprechende SQL-Statement ähnelt dem aus Listing \ref{lst:LeastRecentFirst}, allerdings wird absteigend sortiert.
+
+\subsection{Least Visited Domain}
+Hierbei handelt es sich um eine spezielle Strategie für den Anwendungsfall diese Webcrawlers. Es wird nach der Domäne gesucht, zu der es noch unbesuchte Webseiten in der Tabelle gibt, aber möglichst wenige bereits besuchte Webseiten. Somit werden schnell viele Webseiten auf verschiedenen Domänen besucht. Dies findet Anwendung, wenn so schnell wie möglich viele Sicherheitslücken gefunden werden sollen, denn dabei ist es Sinnvoll viele möglichst unterschiedliche Seiten zu besuchen. \\
+Die SQL-Abfrage für diese Strategie, zusehen in Listing \ref{lst:LeastVisitedDomain}, ist etwas komplizierter und kann bei größeren Tabellen inperformant sein.
+
+\begin{lstlisting}[
+caption={SQL-Abfrage für least visited domain Strategie},
+label=lst:LeastVisitedDomain]
+...
+\end{lstlisting}
 
 \section{Worker-Plugin}
 Jeder Arbeiter des Crawlers ist ein Taintfox Instanz mit einem entsprechenden Worker-Plugin. Das Plugin verbindet sich per Websocket zum Master-Server und erhält von diesem Arbeitspakete mit Webseiten. Diese werden dann nacheinander im Browser geöffnet und alle vorhandenen Links werden extrahiert. Außerdem kann ein externes Analyse-Plugin Daten an das Worker-Plugin weiter geben. Sind alle Webseiten eines Arbeitspaketes abgearbeitet worden, so werden die neu gefundenen Links und gegebenenfalls vorhandene Analyseergebnisse an den Master-Server zurückgesendet.
-\subsection{Aufbau von Firefox Plugins}
+\subsection{Aufbau des Plugins}
  [https://mdn.mozillademos.org/files/7873/content-scripting-overview.png]
-Für das Worker-Plugin werden 2 Content Scripts benötigt. ...
+Wie in Kapitel \ref{sec:FirefoxPluginsAufbau} bereits erklärt, besitzt ein Plugin einen Grundcode, in dem die Hauptlogik steckt, und mehrere Content Scripts, welche in beliebige Webseiten injiziert werden können, um zum Beispiel mit dem DOM zu interagieren. Für das Worker-Plugin werden 2 Content Scripts benötigt. \\
+Das Content Script extractLinks.js wird in jede geöffnete Webseite injiziert und extrahiert alle darin befindlichen Links. Mithilfe eines Events werden diese zurück an den Grundcode geliefert, wo sie weiter verarbeitet werden. \\
+Der Grundcode selber hat keinen Zugriff auf eine API zur Websocketkommunikation. Aus diesem Grund wird ein Content Script verwendet, das die Standard Javascript Websocket API benutzt. Über entsprechende Events werden alle ankommenden und ausgehenden Nachrichten zwischen Grundcode und Content Script ausgetauscht. Da es keinen spezielle Webseite gibt, in welche dieses Content Script eingebettet werden soll, wird ein so genannter Page Worker verwendet. Dies ist eine für den Benutzer unsichtbare Seite, welche für das Script genutzt werden kann.
 \subsection{Aufgetretene Probleme}
-In diesem Abschnitt werden kurz einige Probleme und deren Lösungen beleuchtet, die während der Entwicklung des Worker-Plugins aufgetreten sind. Diese waren dabei nicht in den Anforderungen aus Kapitel XXX vorhergesehen.
+In diesem Abschnitt werden kurz einige Probleme und deren Lösungen beleuchtet, die während der Entwicklung des Worker-Plugins aufgetreten sind. Diese waren dabei nicht in den Anforderungen aus Kapitel \ref{sec:Anforderungsanalyse} vorhergesehen.
 \subsubsection{Bilder und andere Ressourcen}
 Nachdem eine Webseite im Taintfox geladen wurde, werden vom Worker-Plugin alle Links extrahiert. Die meisten dieser Links führen zu anderen Webseiten, die ebenfalls besucht werden sollen. Es gibt allerdings auch Links auf Bilder und andere Ressourcen, welche nicht geöffnet werden brauchen, da hier keine Analysedaten gewonnen werden können. Um das unnötige Laden von diesen Ressourcen zu vermeiden, wird die Eigenschaft \enquote{contentType} des Tab-Objektes inspiziert. Diese beinhaltet den Internet Media Type (MIME-Type) der zu ladenden Ressource, welcher die Art der Ressource genauer beschreibt. Interessant für das Crawling sind MIME-Types wie \enquote{text/html} und \enquote{application/xhtml+xml} welche auf HTML Seiten hinweisen. Wird hingegen zum Beispiel der MIME-Type \enquote{image/png}, \enquote{audio/mpeg} oder \enquote{application/pdf} vorgefunden, so muss diese Ressource nicht weiter verfolgt werden, da sie für das Analyse-Plugin unwichtig ist. 
 \subsubsection{Downloads}
-Einige Webseiten starten über ein Skript automatisch Downloads. Dies führt dazu, dass der Taintfox ein separates Fenster mit Informationen zu diesem Download anzeigt, wie in Abbildung XXX zu sehen ist. Für den Crawler sind diese Downloads nicht relevant und werden ignoriert. Mit der Zeit werden dadurch immer mehr solcher Downloadfenster geöffnet. \\
+Einige Webseiten starten über ein Skript automatisch Downloads. Dies führt dazu, dass der Taintfox ein separates Fenster mit Informationen zu diesem Download anzeigt, wie in Abbildung \ref{fig:DownloadPopup} zu sehen ist. Für den Crawler sind diese Downloads nicht relevant und werden ignoriert. Mit der Zeit werden dadurch immer mehr solcher Downloadfenster geöffnet. \\
 Um dieses Problem zu umgehen, kann der Firefox so eingestellt werden, dass alle Dateien automatisch heruntergeladen werden, ohne den Benutzer in einem Popup danach zu fragen. Da die Dateien nicht tatsächlich heruntergeladen werden sollen, meldet das Worker-Plugin einen Listener an, welcher benachrichtigt wird, sobald ein neuer Download gestartet wurde. Dieser wird dann im nächsten Schritt sofort abgebrochen.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\textwidth]{Bilder/DownloadScreenshot.png}
+	\caption{Störendes Popup bei Downloads}
+	\label{fig:DownloadPopup}
+\end{figure}
+
 \subsubsection{Zu viele Anfragen auf eine Seite}
 Ein Webserver kann so konfiguriert werden, dass er bei zu vielen Anfragen von der selben IP-Adresse den Fehler 429 \enquote{To many requests} zurück liefert. Um dieses Problem zu umgehen, sollten die Arbeitspakete möglichst unterschiedliche URLs enthalten, die jeweils zu einer anderen Domäne gehören.
+
 \subsubsection{Taintfox Abstürze}
 Der Firefox und somit auch der Taintfox ist nicht dafür ausgelegt, eine große Menge von Webseiten hintereinander, für eine lange Zeitperiode, zu laden. Aus diesem Grund kann es hin und wieder zu einem Absturz kommen. Um ein manuelles Neustarten zu vermeiden, sollte der Taintfox mithilfe eines Skriptes so gestartet werde, dass bei einem Absturz der Neustart automatisch erfolgt. Während der Testdurchläufe hat sich ergeben, dass ein automatisierter Neustart des Taintfox alle 3-4 Stunden am besten funktioniert.
 
 \chapter{Anwendung}
 In diesem Kapitel wird der zuvor entwickelte Webcrawler eingesetzt, um eine große Anzahl von Webseiten auf DOM basierte Cross-Site Scripting Schwachstellen zu untersuchen. Dies dient einerseits dazu, die Fähigkeiten und Grenzen des Webcrawlers zu testen, andererseits sollen die gewonnenen Daten analysiert werden, um festzustellen, wie häufig DOM basiertes XSS auftritt. Zusätzlich wird erfasst, welche Quellen und Senken dabei am häufigsten sind. Im Rahmen dieser Arbeit wurden zwei Crawlvorgänge mit verschieden Parameter durchgeführt.
 \section{Alexa Top 500}
+\label{sec:Alexa500}
 Das kalifornische Unternehmen Alexa Internet veröffentlicht regelmäßig eine Liste mit den meist besuchten Webseiten im Internet. Dabei werden Daten wie die Anzahl der täglichen Benutzer und die durchschnittliche Zeit, die jeder Benutzer auf der Webseite verbringt, verwendet. Damit stellt die Alexa Top Websites Liste einen guten Datensatz für die Suche von Sicherheitslücken dar, denn es handelt sich um tatsächlich relevante Webseiten und die Ergebnisse sind durch den genau definierten Datensatz vergleichbar.\\
 \subsection{Webcrawler Konfiguration}
 Die ersten 500 Webseiten auf der Alexa Liste werden für den folgenden Crawldurchlauf als Start-URLs verwendet. Der Webcrawler wird so konfiguriert, dass nur interne Links auf den Webseiten verfolgt werden, um somit auf der gleichen Domäne zu bleiben. Dadurch wird sichergestellt, dass das Ergebnis nicht verfälscht wird und ausschließlich die Alexa Top 500 Webseiten besucht werden. \\
 Es wird eine maximale Crawltiefe von zwei eingestellt. Da die Anzahl der zu besuchenden Webseiten exponentiell mit der Suchtiefe wächst, muss bei 500 Startseiten bereits hier mit einer Größenordnung im sechsstelligen Bereich gerechnet werden. Eine solche Anzahl von Webseiten ist für ein kleines Hardwaresetup schon sehr viel.\\
 Der Webcrawler läuft auf einer virtuellen Maschine (Windows 10) mit 5 Gigabyte Arbeitsspeicher. Angebunden ist diese an eine 50 Mbit Internetleitung. Es werden 2 Taintfox Instanzen, mit jeweils 3 Tabs, als Arbeiter gestartet.
 \subsection{Daten zum Crawlvorgang}
-Es wurden insgesamt 3.346.905 Webseiten vom Crawler entdeckt, von denen 77.025 besucht wurden. Tabelle XXX zeigt die Anzahl der gefundenen und besuchten Seiten pro Crawltiefe. Auf der Crawltiefe 0 wurden alle 500 Startseiten besucht. Auch auf Ebene 1 wurden die meisten gefundenen Webseiten auch besucht. Die ca. 500 unbesuchten Webseiten sind Links auf fehlerhafte oder nicht mehr existierende Seiten. In Ebene 2 sind vergleichsweise nur sehr wenige Webseiten besucht worden. Dies liegt daran, dass der Crawlvorgang, aufgrund von Zeitmangel, frühzeitig beendet werden musste. \\
+Es wurden insgesamt 3.346.905 Webseiten vom Crawler entdeckt, von denen 77.025 besucht wurden. Tabelle \ref{tab:StatistikBesuchteSeiten} zeigt die Anzahl der gefundenen und besuchten Seiten pro Crawltiefe. Auf der Crawltiefe 0 wurden alle 500 Startseiten besucht. Auch auf Ebene 1 wurden die meisten gefundenen Webseiten auch besucht. Die ca. 500 unbesuchten Webseiten sind Links auf fehlerhafte oder nicht mehr existierende Seiten. In Ebene 2 sind vergleichsweise nur sehr wenige Webseiten besucht worden. Dies liegt daran, dass der Crawlvorgang, aufgrund von Zeitmangel, frühzeitig beendet werden musste. \\
 Für das Crawlen der 77.025 Webseiten wurden insgesamt ca. 3 Tage bzw. 72 Stunden benötigt. Bei dem gegebenen Setup, liegt die Performance des Webcrawlers also ungefähr bei 1000 Webseiten pro Stunde.
 
 \begin{table}
@@ -242,37 +284,37 @@ Für das Crawlen der 77.025 Webseiten wurden insgesamt ca. 3 Tage bzw. 72 Stunde
 	\hline 
 \end{tabular} 
 \caption{Statistik der besuchten und gefunden Seiten}
+\label{tab:StatistikBesuchteSeiten}
 \end{table}
 
 \subsection{Daten zur Analyse}
 Während des Crawlvorgangs wurden für 69.997 von insgesamt 77.025 Webseiten ein Analyseergebnis erstellt. Das bedeutet auf 9,1\% der Webseiten wurde überhaupt kein Datenfluss (Taintflow) gefunden. Jedes Analyseergebnis beinhaltet mehrere Taintflows. Insgesamt wurden 283.911 entdeckt. Pro Webseite, auf der es überhaupt einen Taintflow gibt, wurden im Durchschnitt also 4 solcher Flows gefunden. 
 
-Das Diagramm XXX zeigt die Verteilung der Quellen und Senken. Zuerst fällt ins Auge, dass \textit{document.cookie} sowohl bei den Quellen, als auch bei den Senken den ersten Platz belegt. Gerade bei diesen Datenflüssen ist allerdings ein Angriff eher schwer. Die restlichen Quellen beziehen sich alle auf die URL oder einen Teil davon. Bei den Senken stehen \textit{document.write} und \textit{innerHTML} auf zweiter und dritter Stelle. Beide erlauben es, dynamisch HTML zu einer Seite hinzuzufügen. Unter \enquote{Rest} sind alle anderen Senken enthalten, wie zum Beispiel eval. 
+Die Abbildung \ref{fig:VerteilungQuellenSenken}  zeigt die Verteilung der Quellen und Senken. Zuerst fällt ins Auge, dass \textit{document.cookie} sowohl bei den Quellen, als auch bei den Senken den ersten Platz belegt. Gerade bei diesen Datenflüssen ist allerdings ein Angriff eher schwer. Die restlichen Quellen beziehen sich alle auf die URL oder einen Teil davon. Bei den Senken stehen \textit{document.write} und \textit{innerHTML} auf zweiter und dritter Stelle. Beide erlauben es, dynamisch HTML zu einer Seite hinzuzufügen. Unter \enquote{Rest} sind alle anderen Senken enthalten, wie zum Beispiel eval. 
 
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=1\textwidth]{Bilder/Diagram1.png}
 	\caption{Verteilung der Quellen und Senken von allen Taintflows}
+	\label{fig:VerteilungQuellenSenken}
 \end{figure}
 
 Der Exploit-Generator, welcher für die verschiedenen Flows automatisch Angriffe generiert, kann dies nur für einen kleinen Teil der Quellen und Senken machen. Aus diesem Grund werden alle Taintflows, welche eine Quelle oder Senke besitzen, für die kein Exploit generiert werden kann, herausgefiltert. Dabei entsteht eine Liste mit allen potentiell angreifbaren Taintflows, welche in diesem konkreten Fall 52.933 Elemente hat. Für 19\% aller gefundenen Taintflows kann also automatisch ein Exploit generiert werden. \\
-Das Diagramm XXX zeigt ebenfalls die Verteilung von Quellen und Senken, allerdings diesmal nur von den potentiell angreifbaren Taintflows. Als Quellen kommen hier nur noch \textit{location.href} und \textit{document.documentURI} in Frage. Beide dieser Eigenschaften verweisen auf die komplette URL der Webseite. Ein schädlicher Code könnte also zum Beispiel an das Ende der URL angehängt werden. \\
+Die Diagramme in Abbildung \ref{fig:VerteilungQuellenSenkenAngreifbar} zeigen ebenfalls die Verteilung von Quellen und Senken, allerdings diesmal nur von den potentiell angreifbaren Taintflows. Als Quellen kommen hier nur noch \textit{location.href} und \textit{document.documentURI} in Frage. Beide dieser Eigenschaften verweisen auf die komplette URL der Webseite. Ein schädlicher Code könnte also zum Beispiel an das Ende der URL angehängt werden. \\
 Die beiden Top Senken sind \textit{document.write} und \textit{innerHTML}. Die meisten Cross-Site Scripting Möglichkeiten entstehen also beim dynamischen Einfügen von HTML. Das dynamische Ausführen von JavaScript über eval scheint hingegen sehr viel seltener einen kritischen Datenfluss zu erzeugen (nur 1\%). 
 
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=1\textwidth]{Bilder/Diagram2.png}
 	\caption{Verteilung der Quellen und Senken von potentiell angreifbaren Taintflows}
+	\label{fig:VerteilungQuellenSenkenAngreifbar}
 \end{figure}
 
 Mithilfe des Validierungsservice, wurden alle 52.933 potenziellen XSS Schwachstellen überprüft. Das Ergebnis sind 180 erfolgreiche Exploits. Darin sind allerdings auch teilweise die gleichen Verwundbarkeiten auf verschiedenen Webseiten enthalten. Tritt auf unterschiedlichen Webseiten mit derselben Domäne, im selben Skript, in derselben Zeile ein Exploit auf, so sollte dies nur als eine Verwundbarkeit gezählt werden. \\
 Nach einer entsprechenden Filterung liegen dann noch 31 ausführbare Cross-Site-Scripting Angriffe, auf 15 verschiedenen Domänen vor. Es sind somit 3\% der Alexa Top 500 Seiten angreifbar. Dies zeigt, dass XSS immer noch ein großes Problem darstellt, zumal hier nur auf einfache DOM basierte Angriffe getestet wurde. Es ist davon auszugehen, dass bei komplexeren XSS Angriffen noch mehr Seiten betroffen sind.
- 
-
-
 
 \section{Webforum}
-In Abschnitt XXX wurde ein sehr beschränkter Crawldurchlauf der Alexa Top 500 Webseiten durchgeführt. Dies ist sinnvoll, da so ein fester Datensatz verwendet wurde. In einem zweiten Crawldurchlauf sollen nun viele möglichst verschiedene Seiten besucht werden. Die Hoffnung ist, dadurch so viele Sicherheitslücken wie möglich zu finden.
+In Abschnitt \ref{sec:Alexa500} wurde ein sehr beschränkter Crawldurchlauf der Alexa Top 500 Webseiten durchgeführt. Dies ist sinnvoll, da so ein fester Datensatz verwendet wurde. In einem zweiten Crawldurchlauf sollen nun viele möglichst verschiedene Seiten besucht werden. Die Hoffnung ist, dadurch so viele Sicherheitslücken wie möglich zu finden.
 \subsection{Webcrawler Konfiguration}
 Als Startpunkt des Crawlprozesses wird das Webforum reddit.com gewählt, da auf diesem viele externe Links vorhanden sind. Werden auf einer Webseite keine Schwachstellen gefunden, so ist es unwahrscheinlicher auf anderen Webseiten der selben Domäne fündig zu werden. Mit diesem Gedanken im Hinterkopf wird der Crawler so eingestellt, dass ausschließlich externe Links weiterverfolgt werden. \\
 Die maximale Crawltiefe wird auf 7 gestellt, da nur eine einzige Startseite angegeben wurde und es in der Regel nicht so viele externe Links auf einer Seite gibt.
@@ -286,4 +328,22 @@ Die Verteilung der Quellen und Senken ist sehr ähnlich wie im vorherigen Versuc
 Nach der Validierung bleiben 115 erfolgreiche Exploits übrig. Da sehr viele verschiedene Webseiten besucht worden sind, fällt die Anzahl der duplizierten Exploits auch deutlich geringer aus. Nach Filterung sind noch 95 Exploits übrig. Das sind dreimal so viele, wie bei den Alexa Top 500, obwohl es nur ein Fünftel der potenziellen Taintflows gibt. \\
 Unter den gefundenen Webseiten befinden sich auch einige bekannte, wie zum Beispiel accuweather.com, unicef.fr, abc.es und www.telefonica.com. Auffällig sind auch Skripte, die gleich auf mehreren unterschiedlichen Seiten für Schwachstellen sorgen. So gibt es Beispielsweise ein Skript eines Werbeanbieters, welches für acht Exploits auf unterschiedlichen Webseiten verantwortlich ist. Dieses Skript macht wahrscheinlich noch hunderte andere Webseiten unsicher.
 
-\chapter{Fazit}
+\chapter{Zusammenfassung}
+Die am Anfang aufgestellten Anforderungen konnten erfolgreich in einen flexiblen Webcrawler umgesetzt werden. Dieser besteht aus einem Master-Server, der den Crawlprozess verwaltet und entsprechende Daten persistiert und einem Worker-Plugin, welches Taintfox installiert wird, um dort Arbeitspakete vom Master-Server zu verarbeiten. Diese Aufteilung in einen Koordinator und viele Arbeiter ermöglicht es, die Performance des Crawlers durch das Hinzufügen von Arbeitern zu erhöhen. 
+
+Um den Webcrawler für verschiedene Anwendungsfälle universell einsetzbar zu machen, wurde die Analyseaufgabe in ein separates Analyse-Plugin verlagert, welches über Events mit dem Worker-Plugin kommuniziert. Durch diese lose Kopplung ist der Austausch des Analyseverfahren einfach zu bewerkstelligen.
+
+Die Funktionalität des Webcrawlers wurde in zwei Experimenten getestet. Dabei ging es um das Finden von DOM basierten Cross-Site Scripting Schwachstellen. Hierbei wurde gezeigt, dass der Crawler auf mittlerer Hardware zufriedenstellende Ergebnisse liefert. Es wurden insgesamt 126 erfolgreiche Exploits gefunden. Diese Zahl zeigt, dass Cross-Site Scripting noch immer ein großes Problem darstellt. Mithilfe des neu entwickelten Webcrawlers wird es in Zukunft einfacher werden, diese Probleme zu erkennen und reduzieren.
+
+\section{Nächste Schritte}
+Die gestellten Anforderungen werden vom Entwickelten Webcrawler erfüllt. Allerdings ist die Entwicklung noch nicht Abgeschlossen und es gibt einige Bereiche, die noch verbessert und erweitert werden können. 
+
+Während der Entwicklung des Webcrawlers wurden nur zwei relativ kleine Crawldurchläufe gemacht. Bei diesen wurden jeweils unter 100.000 Webseiten besucht. Es sollten weitere Experimente gemacht werden, bei denen mehr Hardware und Zeit zur Verfügung steht, um die Grenzen des Webcrawlers zu testen. Gerade bei sehr vielen gefundenen Webseiten könnte die Verwaltung in einer einzigen relationalen Tabelle zu Performance-Problem führen. Die PageRepository Klasse des Master-Servers müsste in diesem Fall optimiert oder mit einer anderen Technologie implementiert werden. 
+
+Auf gewissen Webseiten wird der Klient beim Aufruf auf eine andere Webseite weitergeleitet. Der Crawler bekommt diese Umleitung nicht mit und geht davon aus, auf der ursprünglichen Webseite zu sein. In Zukunft sollte sich dieses Problem genauer angeschaut werden. Es muss definiert werden, was genau bei einer Umleitung passieren soll und wie dies dokumentiert wird.
+
+Schlussendlich sollte ein Umstieg auf die Webextension API in Betracht gezogen werden. Zum Zeitpunkt der Implementierung des Webcrawlers haben diese noch nicht alle benötigten Funktionalitäten unterstützt, inzwischen ist die API aber vergleichbar mit der des Firefox Add-On SDKs.
+
+
+
+
